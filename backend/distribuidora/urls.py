@@ -24,6 +24,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # Incluir las URLs de la aplicación de usuarios
     path('api/usuarios/', include('usuarios.urls')),
+     # Incluir las URLs de la aplicación de productos
+    path('api/productos/', include('productos.urls')),
     
     # URLs para autenticación JWT
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
