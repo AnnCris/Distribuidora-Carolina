@@ -1,0 +1,451 @@
+/* Importar estilos básicos */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+/* Reset y configuración básica */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  color: #333;
+  background-color: #f5f5f5;
+  margin: 0; /* Eliminar margen del body */
+  padding: 0; /* Eliminar padding del body */
+  overflow-x: hidden; /* Evitar scroll horizontal */
+}
+
+/* Contenedor principal */
+.nosotros-container {
+  width: 100%;
+  max-width: 100%; /* Cambiar a 100% para eliminar bordes blancos */
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+/* Estilos del Header actualizado con nuevos colores */
+.header {
+  background-color: #0D92F4; /* Color principal azul */
+  padding: 10px 20px;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.logo-title-container {
+  display: flex;
+  align-items: center;
+}
+
+.header-logo {
+  width: 60px;
+  height: 60px;
+  margin-right: 15px;
+}
+
+.header-title {
+  color: white;
+  line-height: 1.2;
+}
+
+.header-title h1 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.header-title h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.header-title h3 {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border-radius: 25px;
+  padding: 5px 15px;
+  width: 40%;
+  max-width: 500px;
+}
+
+.search-label {
+  color: #0D92F4;
+  font-weight: 600;
+  margin-right: 5px;
+}
+
+.dropdown-icon {
+  color: #0D92F4;
+  font-size: 12px;
+  margin-right: 10px;
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  flex: 1;
+  padding: 8px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.search-button {
+  background: none;
+  border: none;
+  color: #0D92F4;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.cart-button {
+  background: none;
+  border: none;
+  margin-right: 15px;
+  cursor: pointer;
+}
+
+.cart-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.user-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.user-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.user-label {
+  color: white;
+  font-weight: 600;
+  margin-right: 5px;
+}
+
+/* Estilos de la navegación con color actualizado */
+.main-nav {
+  background-color: #F95454; /* Color rojo según especificaciones */
+  padding: 12px 0;
+  width: 100%;
+}
+
+.nav-links {
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.nav-links li {
+  margin: 0 25px;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 5px 0;
+  transition: all 0.2s;
+}
+
+.nav-links a:hover, .nav-links a.active {
+  opacity: 0.9;
+  border-bottom: 2px solid white;
+}
+
+/* Contenido de Nosotros */
+.nosotros-content {
+  padding: 40px 20px;
+  background-color: #f8f9fa;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.title-container {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title-container h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #0D92F4;
+  margin-bottom: 10px;
+}
+
+.title-underline {
+  width: 80px;
+  height: 3px;
+  background-color: #F95454;
+  margin: 0 auto;
+}
+
+/* Sección Historia */
+.historia-section {
+  display: flex;
+  margin-bottom: 60px;
+  background-color: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.section-image {
+  flex: 1;
+  min-width: 300px;
+  overflow: hidden;
+}
+
+.section-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.section-text {
+  flex: 1;
+  padding: 30px;
+}
+
+.section-text h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #0D92F4;
+  margin-bottom: 20px;
+}
+
+.section-text p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #555;
+  margin-bottom: 15px;
+}
+
+/* Misión y Visión */
+.mision-vision-section {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 60px;
+  gap: 30px;
+}
+
+.mision-container, .vision-container {
+  flex: 1;
+  background-color: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.mision-container {
+  border-top: 5px solid #0D92F4;
+}
+
+.vision-container {
+  border-top: 5px solid #F95454;
+}
+
+.mision-container h2, .vision-container h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.mision-container h2 {
+  color: #0D92F4;
+}
+
+.vision-container h2 {
+  color: #F95454;
+}
+
+.mision-container p, .vision-container p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #555;
+  text-align: justify;
+}
+
+/* Logística */
+.logistica-section {
+  display: flex;
+  margin-bottom: 60px;
+  background-color: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.logistica-list {
+  list-style: none;
+  margin: 20px 0;
+}
+
+.logistica-list li {
+  margin-bottom: 10px;
+  padding-left: 20px;
+  position: relative;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.logistica-list li::before {
+  content: "•";
+  color: #F95454;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.logistica-list li span {
+  font-weight: 600;
+  color: #0D92F4;
+}
+
+/* Valores */
+.valores-section {
+  background-color: white;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.valores-section h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #0D92F4;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.valores-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.valor-card {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #77CDFF; /* Color celeste claro */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.valor-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.valor-card:nth-child(2n) {
+  border-left: 4px solid #F95454; /* Color rojo */
+}
+
+.valor-card:nth-child(3n) {
+  border-left: 4px solid #C62E2E; /* Color rojo oscuro */
+}
+
+.valor-card h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #0D92F4;
+  margin-bottom: 10px;
+}
+
+.valor-card p {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .historia-section, .logistica-section {
+    flex-direction: column;
+  }
+  
+  .section-image {
+    min-height: 300px;
+  }
+  
+  .valores-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .mision-vision-section {
+    flex-direction: column;
+  }
+  
+  .title-container h1 {
+    font-size: 2rem;
+  }
+  
+  .section-text h2, .mision-container h2, .vision-container h2, .valores-section h2 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .valores-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-text {
+    padding: 20px;
+  }
+  
+  .section-text h2 {
+    font-size: 1.3rem;
+  }
+  
+  .section-text p {
+    font-size: 0.9rem;
+  }
+}
+
+/* Eliminar margen para solucionar el problema de bordes blancos */
+@media (min-width: 1400px) {
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  
+  .nosotros-container {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .header, .main-nav {
+    width: 100%;
+    max-width: 100%;
+  }
+}
