@@ -15,7 +15,12 @@ import {
   FaChevronRight,
   FaSort,
   FaSortUp,
-  FaSortDown
+  FaSortDown,
+  FaCalendarAlt,
+  FaFilter,
+  FaTh,
+  FaList,
+  FaChevronDown
 } from 'react-icons/fa';
 import './ProductosModule.css';
 
@@ -30,6 +35,9 @@ const ProductosModule = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
+  // Vista de productos (grid o tabla)
+  const [viewMode, setViewMode] = useState('grid');
+  
   // Estado para paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -38,18 +46,28 @@ const ProductosModule = () => {
   const [sortField, setSortField] = useState('');
   const [sortDirection, setSortDirection] = useState('asc');
   
+  // Estado para filtros adicionales
+  const [filters, setFilters] = useState({
+    estado: 'todos',
+    categoria: 'todas',
+    stockMinimo: false
+  });
+  
   // Estado para modales
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [currentItem, setCurrentItem] = useState(null);
   
+  // Estado para ver filtros
+  const [showFilters, setShowFilters] = useState(false);
+  
   // Estado para formularios
   const [productoForm, setProductoForm] = useState({
     nombre: '',
-    descripcion: '', // Asegúrate de incluir la descripción
+    descripcion: '', 
     categoria: '',
     marca: '',
-    distribuidora: 1, // Usa el ID de una distribuidora existente
+    distribuidora: 1,
     peso: '',
     fecha_vencimiento: '',
     imagen_url: ''
@@ -207,22 +225,53 @@ const ProductosModule = () => {
     });
   };
   
-  // Filtrado y ordenamiento de datos
-  const filteredProductos = productos
-    .filter(producto => 
-      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      producto.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  // Filtrado con filtros adicionales
+  const applyFilters = (items) => {
+    return items.filter(item => {
+      // Filtro de búsqueda por texto
+      const matchesSearch = 
+        item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filtro por estado
+      const matchesEstado = 
+        filters.estado === 'todos' || 
+        (filters.estado === 'activo' && item.estado) ||
+        (filters.estado === 'inactivo' && !item.estado);
+      
+      // Filtro por categoría
+      const matchesCategoria = 
+        filters.categoria === 'todas' || 
+        item.categoria.toString() === filters.categoria;
+      
+      // Filtro por stock bajo
+      const inventarioItem = inventario.find(inv => inv.producto === item.producto_id);
+      const stockBajo = inventarioItem ? 
+        inventarioItem.stock_actual < inventarioItem.stock_minimo : 
+        false;
+      
+      const matchesStockMinimo = 
+        !filters.stockMinimo || 
+        (filters.stockMinimo && stockBajo);
+        
+      return matchesSearch && matchesEstado && matchesCategoria && matchesStockMinimo;
+    });
+  };
   
+  // Aplicar filtros y ordenar
+  const filteredProductos = applyFilters(productos);
   const sortedProducts = sortItems(filteredProductos, sortField, sortDirection);
   const currentProducts = sortedProducts.slice(indexOfFirstItem, indexOfLastItem);
   
+  // Filtrar y ordenar categorías
   const sortedCategorias = sortItems(categorias, sortField, sortDirection);
   const currentCategorias = sortedCategorias.slice(indexOfFirstItem, indexOfLastItem);
   
+  // Filtrar y ordenar marcas
   const sortedMarcas = sortItems(marcas, sortField, sortDirection);
   const currentMarcas = sortedMarcas.slice(indexOfFirstItem, indexOfLastItem);
   
+  // Filtrar y ordenar inventario
   const sortedInventario = sortItems(inventario, sortField, sortDirection);
   const currentInventario = sortedInventario.slice(indexOfFirstItem, indexOfLastItem);
   
@@ -353,8 +402,6 @@ const ProductosModule = () => {
         imagen_url: productoForm.imagen_url || ''
       };
       
-      console.log('Datos enviados al servidor:', productoData);
-      
       if (currentItem) {
         // Actualizar producto existente
         const response = await axios.put(
@@ -367,7 +414,7 @@ const ProductosModule = () => {
             }
           }
         );
-        console.log('Respuesta del servidor (actualización):', response.data);
+        console.log('Producto actualizado:', response.data);
       } else {
         // Crear nuevo producto
         const response = await axios.post(
@@ -380,7 +427,7 @@ const ProductosModule = () => {
             }
           }
         );
-        console.log('Respuesta del servidor (creación):', response.data);
+        console.log('Producto creado:', response.data);
       }
       
       await loadProductos();
@@ -389,12 +436,10 @@ const ProductosModule = () => {
     } catch (err) {
       console.error('Error al guardar producto:', err);
       
-      // Mostrar detalles del error para mejor diagnóstico
       if (err.response && err.response.data) {
         console.error('Detalles del error:', err.response.data);
         let errorMessage = 'Error al guardar producto: ';
         
-        // Formatear errores del servidor para mostrarlos al usuario
         if (typeof err.response.data === 'object') {
           Object.keys(err.response.data).forEach(key => {
             errorMessage += `${key}: ${err.response.data[key]} `;
@@ -634,7 +679,21 @@ const ProductosModule = () => {
   return (
     <div className="productos-module">
       <div className="productos-header">
-        <h1>Gestión de Productos</h1>
+        <div className="productos-header-top">
+          <div className="productos-title-section">
+            <h1>Gestión de Productos</h1>
+            <div className="productos-date">
+              <FaCalendarAlt />
+              <span>{new Date().toLocaleDateString('es-ES', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}</span>
+            </div>
+          </div>
+        </div>
+        
         <div className="productos-tabs">
           <button 
             className={activeTab === 'productos' ? 'active' : ''} 
@@ -666,15 +725,75 @@ const ProductosModule = () => {
       {activeTab === 'productos' && (
         <div className="productos-content">
           <div className="productos-tools">
-            <div className="search-bar">
-              <FaSearch />
-              <input 
-                type="text" 
-                placeholder="Buscar productos..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="search-filter-section">
+              <div className="search-bar">
+                <FaSearch />
+                <input 
+                  type="text" 
+                  placeholder="Buscar productos..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <div className="filter-dropdown">
+                <button 
+                  className="filter-btn"
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <FaFilter /> Filtros <FaChevronDown />
+                </button>
+                {showFilters && (
+                  <div className="filter-menu">
+                    <div className="filter-group">
+                      <label>Estado:</label>
+                      <select 
+                        value={filters.estado} 
+                        onChange={(e) => setFilters({...filters, estado: e.target.value})}
+                      >
+                        <option value="todos">Todos</option>
+                        <option value="activo">Activos</option>
+                        <option value="inactivo">Inactivos</option>
+                      </select>
+                    </div>
+                    <div className="filter-group">
+                      <label>Categoría:</label>
+                      <select 
+                        value={filters.categoria} 
+                        onChange={(e) => setFilters({...filters, categoria: e.target.value})}
+                      >
+                        <option value="todas">Todas</option>
+                        {categorias.map(cat => (
+                          <option key={cat.categoria_id} value={cat.categoria_id.toString()}>
+                            {cat.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="filter-group checkbox">
+                      <label>
+                        <input 
+                          type="checkbox" 
+                          checked={filters.stockMinimo} 
+                          onChange={(e) => setFilters({...filters, stockMinimo: e.target.checked})}
+                        />
+                        Stock bajo mínimo
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+            
+            <div className="view-toggle">
+              <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}>
+                <FaTh /> Vista de Tarjetas
+              </button>
+              <button className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}>
+                <FaList /> Vista de Tabla
+              </button>
+            </div>
+            
             <button 
               className="add-btn"
               onClick={() => openModal('nuevo-producto')}
@@ -683,573 +802,651 @@ const ProductosModule = () => {
             </button>
           </div>
           
-          <div className="productos-table-container">
-            <table className="productos-table">
-              <thead>
-                <tr>
-                  <th onClick={() => handleSort('producto_id')}>
-                    ID {renderSortIcon('producto_id')}
-                  </th>
-                  <th onClick={() => handleSort('nombre')}>
-                    Nombre {renderSortIcon('nombre')}
-                  </th>
-                  <th onClick={() => handleSort('categoria_nombre')}>
-                    Categoría {renderSortIcon('categoria_nombre')}
-                  </th>
-                  <th onClick={() => handleSort('marca_nombre')}>
-                    Marca {renderSortIcon('marca_nombre')}
-                  </th>
-                  <th onClick={() => handleSort('peso')}>
-                    Peso {renderSortIcon('peso')}
-                  </th>
-                  <th onClick={() => handleSort('stock_actual')}>
-                    Stock {renderSortIcon('stock_actual')}
-                  </th>
-                  <th onClick={() => handleSort('estado')}>
-                    Estado {renderSortIcon('estado')}
-                  </th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentProducts.length > 0 ? (
-                  currentProducts.map(producto => {
-                    const inventarioItem = inventario.find(item => item.producto === producto.producto_id);
-                    const stockActual = inventarioItem ? inventarioItem.stock_actual : 0;
-                    
-                    return (
-                      <tr key={producto.producto_id}>
-                        <td>{producto.producto_id}</td>
-                        <td>{producto.nombre}</td>
-                        <td>{producto.categoria_nombre}</td>
-                        <td>{producto.marca_nombre}</td>
-                        <td>{producto.peso}</td>
-                        <td>{stockActual}</td>
-                        <td>
-                          <span className={producto.estado ? 'estado-activo' : 'estado-inactivo'}>
-                            {producto.estado ? 'Activo' : 'Inactivo'}
-                          </span>
-                        </td>
-                        <td className="acciones">
-                          <button 
-                            className="edit-btn"
-                            onClick={() => openModal('editar-producto', producto)}
-                            title="Editar"
-                          >
-                            <FaEdit />
-                          </button>
-                          <button 
-                            className="delete-btn"
-                            onClick={() => handleDelete('producto', producto.producto_id)}
-                            title="Eliminar"
-                          >
-                            <FaTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="8" className="no-data">No hay productos disponibles</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {renderPagination(filteredProductos.length)}
-        </div>
-      )}
-      
-      {activeTab === 'categorias' && (
-        <div className="productos-content">
-          <div className="productos-tools">
-            <button 
-              className="add-btn"
-              onClick={() => openModal('nueva-categoria')}
-            >
-              <FaPlus /> Nueva Categoría
-            </button>
-          </div>
-          
-          <div className="productos-table-container">
-            <table className="productos-table">
-              <thead>
-                <tr>
-                  <th onClick={() => handleSort('categoria_id')}>
-                    ID {renderSortIcon('categoria_id')}
-                  </th>
-                  <th onClick={() => handleSort('nombre')}>
-                    Nombre {renderSortIcon('nombre')}
-                  </th>
-                  <th onClick={() => handleSort('descripcion')}>
-                    Descripción {renderSortIcon('descripcion')}
-                  </th>
-                  <th onClick={() => handleSort('estado')}>
-                    Estado {renderSortIcon('estado')}
-                  </th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentCategorias.length > 0 ? (
-                  currentCategorias.map(categoria => (
-                    <tr key={categoria.categoria_id}>
-                      <td>{categoria.categoria_id}</td>
-                      <td>{categoria.nombre}</td>
-                      <td>{categoria.descripcion}</td>
-                      <td>
-                        <span className={categoria.estado ? 'estado-activo' : 'estado-inactivo'}>
-                          {categoria.estado ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
-                      <td className="acciones">
-                        <button 
-                          className="edit-btn"
-                          onClick={() => openModal('editar-categoria', categoria)}
-                          title="Editar"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button 
-                          className="delete-btn"
-                          onClick={() => handleDelete('categoria', categoria.categoria_id)}
-                          title="Eliminar"
-                        >
-                          <FaTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="5" className="no-data">No hay categorías disponibles</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {renderPagination(categorias.length)}
-        </div>
-      )}
-      
-      {activeTab === 'marcas' && (
-        <div className="productos-content">
-          <div className="productos-tools">
-            <button 
-              className="add-btn"
-              onClick={() => openModal('nueva-marca')}
-            >
-              <FaPlus /> Nueva Marca
-            </button>
-          </div>
-          
-          <div className="productos-table-container">
-            <table className="productos-table">
-              <thead>
-                <tr>
-                  <th onClick={() => handleSort('marca_id')}>
-                    ID {renderSortIcon('marca_id')}
-                  </th>
-                  <th onClick={() => handleSort('nombre')}>
-                    Nombre {renderSortIcon('nombre')}
-                  </th>
-                  <th onClick={() => handleSort('descripcion')}>
-                    Descripción {renderSortIcon('descripcion')}
-                  </th>
-                  <th>Logo</th>
-                  <th onClick={() => handleSort('estado')}>
-                    Estado {renderSortIcon('estado')}
-                  </th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentMarcas.length > 0 ? (
-                  currentMarcas.map(marca => (
-                    <tr key={marca.marca_id}>
-                      <td>{marca.marca_id}</td>
-                      <td>{marca.nombre}</td>
-                      <td>{marca.descripcion}</td>
-                      <td>
-                        {marca.logo_url && (
-                          <img 
-                            src={marca.logo_url} 
-                            alt={`Logo de ${marca.nombre}`} 
-                            className="marca-logo" 
-                          />
-                        )}
-                      </td>
-                      <td>
-                        <span className={marca.estado ? 'estado-activo' : 'estado-inactivo'}>
-                          {marca.estado ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
-                      <td className="acciones">
-                        <button 
-                          className="edit-btn"
-                          onClick={() => openModal('editar-marca', marca)}
-                          title="Editar"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button 
-                          className="delete-btn"
-                          onClick={() => handleDelete('marca', marca.marca_id)}
-                          title="Eliminar"
-                        >
-                          <FaTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="no-data">No hay marcas disponibles</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {renderPagination(marcas.length)}
-        </div>
-      )}
-      
-      {activeTab === 'inventario' && (
-        <div className="productos-content">
-          <div className="productos-table-container">
-            <table className="productos-table">
-              <thead>
-                <tr>
-                  <th onClick={() => handleSort('inventario_id')}>
-                    ID {renderSortIcon('inventario_id')}
-                  </th>
-                  <th onClick={() => handleSort('producto_nombre')}>
-                    Producto {renderSortIcon('producto_nombre')}
-                  </th>
-                  <th onClick={() => handleSort('stock_actual')}>
-                    Stock Actual {renderSortIcon('stock_actual')}
-                  </th>
-                  <th onClick={() => handleSort('stock_minimo')}>
-                    Stock Mínimo {renderSortIcon('stock_minimo')}
-                  </th>
-                  <th onClick={() => handleSort('ultima_actualizacion')}>
-                    Última Actualización {renderSortIcon('ultima_actualizacion')}
-                  </th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentInventario.length > 0 ? (
-                  currentInventario.map(item => (
-                    <tr key={item.inventario_id} className={item.stock_actual < item.stock_minimo ? 'stock-bajo' : ''}>
-                      <td>{item.inventario_id}</td>
-                      <td>{item.producto_nombre}</td>
-                      <td>{item.stock_actual}</td>
-                      <td>{item.stock_minimo}</td>
-                      <td>{new Date(item.ultima_actualizacion).toLocaleString()}</td>
-                      <td className="acciones">
-                        <button 
-                          className="edit-btn"
-                          onClick={() => openModal('editar-inventario', item)}
-                          title="Editar"
-                        >
-                          <FaEdit />
-                        </button>
-                        <div className="stock-buttons">
-                          <button 
-                            className="stock-up-btn"
-                            onClick={() => handleAjustarStock(item.inventario_id, 1)}
-                            title="Incrementar stock"
-                          >
-                            <FaArrowUp />
-                          </button>
-                          <button 
-                            className="stock-down-btn"
-                            onClick={() => handleAjustarStock(item.inventario_id, -1)}
-                            title="Decrementar stock"
-                          >
-                            <FaArrowDown />
-                          </button>
+          {viewMode === 'grid' ? (
+            <div className="productos-cards-grid">
+              {currentProducts.length > 0 ? (
+                currentProducts.map(producto => {
+                  const inventarioItem = inventario.find(item => item.producto === producto.producto_id);
+                  const stockActual = inventarioItem ? inventarioItem.stock_actual : 0;
+                  const stockMinimo = inventarioItem ? inventarioItem.stock_minimo : 0;
+                  const stockBajo = stockActual < stockMinimo;
+                  
+                  return (
+                    <div key={producto.producto_id} className={`producto-card ${stockBajo ? 'stock-bajo' : ''}`}>
+                      <div className="producto-card-header">
+                        <div className="producto-categoria">{producto.categoria_nombre}</div>
+                        <div className={`producto-estado ${producto.estado ? 'activo' : 'inactivo'}`}>
+                          {producto.estado ? 'Activo' : 'Inactivo'}
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="no-data">No hay inventario disponible</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {renderPagination(inventario.length)}
-        </div>
-      )}
-      
-      {/* Modales para Formularios */}
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <div className="modal-header">
-              <h2>{modalType.includes('nuevo') || modalType.includes('nueva') ? 'Crear' : 'Editar'} {modalType.split('-')[1]}</h2>
-              <button className="close-btn" onClick={closeModal}>×</button>
-            </div>
-            
-            <div className="modal-body">
-              {modalType.includes('producto') && (
-                <form className="form" onSubmit={handleSubmitProducto}>
-                  <div className="form-group">
-                    <label htmlFor="nombre">Nombre:</label>
-                    <input 
-                      type="text" 
-                      id="nombre" 
-                      name="nombre" 
-                      value={productoForm.nombre} 
-                      onChange={handleProductoChange}
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="descripcion">Descripción:</label>
-                    <textarea 
-                      id="descripcion" 
-                      name="descripcion" 
-                      value={productoForm.descripcion} 
-                      onChange={handleProductoChange}
-                      required 
-                      placeholder="Descripción del producto"
-                    />
-                  </div>
-                                    
-                  <div className="form-group">
-                    <label htmlFor="categoria">Categoría:</label>
-                    <select 
-                      id="categoria" 
-                      name="categoria" 
-                      value={productoForm.categoria} 
-                      onChange={handleProductoChange}
-                      required 
-                    >
-                      <option value="">Seleccione una categoría</option>
-                      {categorias.map(categoria => (
-                        <option key={categoria.categoria_id} value={categoria.categoria_id}>
-                          {categoria.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="marca">Marca:</label>
-                    <select 
-                      id="marca" 
-                      name="marca" 
-                      value={productoForm.marca} 
-                      onChange={handleProductoChange}
-                      required 
-                    >
-                      <option value="">Seleccione una marca</option>
-                      {marcas.map(marca => (
-                        <option key={marca.marca_id} value={marca.marca_id}>
-                          {marca.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="peso">Peso/Volumen:</label>
-                    <input 
-                      type="text" 
-                      id="peso" 
-                      name="peso" 
-                      value={productoForm.peso} 
-                      onChange={handleProductoChange}
-                      required 
-                      placeholder="Ej: 500g, 1kg, 250ml"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="fecha_vencimiento">Fecha de Vencimiento:</label>
-                    <input 
-                      type="date" 
-                      id="fecha_vencimiento" 
-                      name="fecha_vencimiento" 
-                      value={productoForm.fecha_vencimiento} 
-                      onChange={handleProductoChange}
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="imagen_url">URL de Imagen:</label>
-                    <input 
-                      type="text" 
-                      id="imagen_url" 
-                      name="imagen_url" 
-                      value={productoForm.imagen_url || ''} 
-                      onChange={handleProductoChange}
-                      placeholder="https://ejemplo.com/imagen.jpg"
-                    />
-                  </div>
-                  
-                  <div className="form-buttons">
-                    <button type="submit" className="submit-btn">
-                      {modalType.includes('nuevo') ? 'Crear' : 'Actualizar'}
-                    </button>
-                    <button type="button" className="cancel-btn" onClick={closeModal}>
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              )}
-              
-              {modalType.includes('categoria') && (
-                <form className="form" onSubmit={handleSubmitCategoria}>
-                  <div className="form-group">
-                    <label htmlFor="nombre">Nombre:</label>
-                    <input 
-                      type="text" 
-                      id="nombre" 
-                      name="nombre" 
-                      value={categoriaForm.nombre} 
-                      onChange={handleCategoriaChange}
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="descripcion">Descripción:</label>
-                    <textarea 
-                      id="descripcion" 
-                      name="descripcion" 
-                      value={categoriaForm.descripcion} 
-                      onChange={handleCategoriaChange}
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="form-buttons">
-                    <button type="submit" className="submit-btn">
-                      {modalType.includes('nueva') ? 'Crear' : 'Actualizar'}
-                    </button>
-                    <button type="button" className="cancel-btn" onClick={closeModal}>
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              )}
-              
-              {modalType.includes('marca') && (
-                <form className="form" onSubmit={handleSubmitMarca}>
-                  <div className="form-group">
-                    <label htmlFor="nombre">Nombre:</label>
-                    <input 
-                      type="text" 
-                      id="nombre" 
-                      name="nombre" 
-                      value={marcaForm.nombre} 
-                      onChange={handleMarcaChange}
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="descripcion">Descripción:</label>
-                    <textarea 
-                      id="descripcion" 
-                      name="descripcion" 
-                      value={marcaForm.descripcion} 
-                      onChange={handleMarcaChange}
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="logo_url">URL del Logo:</label>
-                    <input 
-                      type="text" 
-                      id="logo_url" 
-                      name="logo_url" 
-                      value={marcaForm.logo_url || ''} 
-                      onChange={handleMarcaChange}
-                      placeholder="https://ejemplo.com/logo.png"
-                    />
-                  </div>
-                  
-                  <div className="form-buttons">
-                    <button type="submit" className="submit-btn">
-                      {modalType.includes('nueva') ? 'Crear' : 'Actualizar'}
-                    </button>
-                    <button type="button" className="cancel-btn" onClick={closeModal}>
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              )}
-              
-              {modalType.includes('inventario') && (
-                <form className="form" onSubmit={handleSubmitInventario}>
-                  <div className="form-group">
-                    <label htmlFor="producto">Producto:</label>
-                    <input 
-                      type="text" 
-                      id="producto" 
-                      value={
-                        productos.find(p => p.producto_id === Number(inventarioForm.producto))?.nombre || ''
-                      }
-                      disabled
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="stock_actual">Stock Actual:</label>
-                    <input 
-                      type="number" 
-                      id="stock_actual" 
-                      name="stock_actual" 
-                      value={inventarioForm.stock_actual} 
-                      onChange={handleInventarioChange}
-                      min="0"
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="stock_minimo">Stock Mínimo:</label>
-                    <input 
-                      type="number" 
-                      id="stock_minimo" 
-                      name="stock_minimo" 
-                      value={inventarioForm.stock_minimo} 
-                      onChange={handleInventarioChange}
-                      min="0"
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="form-buttons">
-                    <button type="submit" className="submit-btn">
-                      Actualizar
-                    </button>
-                    <button type="button" className="cancel-btn" onClick={closeModal}>
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+                      </div>
+                      
+                      <div className="producto-card-content">
+                        <h3 className="producto-nombre">{producto.nombre}</h3>
+                        <div className="producto-info">
+                          <div className="producto-info-item">
+                            <span className="info-label">Marca:</span>
+                            <span className="info-value">{producto.marca_nombre}</span>
+                          </div>
+                          <div className="producto-info-item">
+                            <span className="info-label">Peso:</span>
+                            <span className="info-value">{producto.peso}</span>
+                          </div>
+                          <div className="producto-info-item">
+                            <span className="info-label">Stock:</span>
+                            <span className={`info-value ${stockBajo ? 'stock-bajo-text' : ''}`}>
+                              {stockActual} {stockBajo && <span className="stock-warning">¡Bajo!</span>}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="producto-card-actions">
+                        <button 
+                          className="edit-btn"
+                          onClick={() => openModal('editar-producto', producto)}
+                          title="Editar"
+                        >
+                          <FaEdit /> Editar
+                        </button>
+                        <button 
+                          className="delete-btn"
+                          onClick={() => handleDelete('producto', producto.producto_id)}
+                          title="Eliminar"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="no-data-message">
+                  <div className="no-data-icon"><FaBoxOpen /></div>
+                  <h3>No hay productos disponibles</h3>
+                  <p>Agrega nuevos productos haciendo clic en "Nuevo Producto"</p>
+               </div>
+             )}
+           </div>
+         ) : (
+           <div className="productos-table-container">
+             <table className="productos-table">
+               <thead>
+                 <tr>
+                   <th onClick={() => handleSort('nombre')}>
+                     Nombre {renderSortIcon('nombre')}
+                   </th>
+                   <th onClick={() => handleSort('categoria_nombre')}>
+                     Categoría {renderSortIcon('categoria_nombre')}
+                   </th>
+                   <th onClick={() => handleSort('marca_nombre')}>
+                     Marca {renderSortIcon('marca_nombre')}
+                   </th>
+                   <th onClick={() => handleSort('peso')}>
+                     Peso {renderSortIcon('peso')}
+                   </th>
+                   <th onClick={() => handleSort('stock_actual')}>
+                     Stock {renderSortIcon('stock_actual')}
+                   </th>
+                   <th onClick={() => handleSort('estado')}>
+                     Estado {renderSortIcon('estado')}
+                   </th>
+                   <th>Acciones</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {currentProducts.length > 0 ? (
+                   currentProducts.map(producto => {
+                     const inventarioItem = inventario.find(item => item.producto === producto.producto_id);
+                     const stockActual = inventarioItem ? inventarioItem.stock_actual : 0;
+                     const stockMinimo = inventarioItem ? inventarioItem.stock_minimo : 0;
+                     const stockBajo = stockActual < stockMinimo;
+                     
+                     return (
+                       <tr key={producto.producto_id} className={stockBajo ? 'stock-bajo-row' : ''}>
+                         <td>{producto.nombre}</td>
+                         <td>{producto.categoria_nombre}</td>
+                         <td>{producto.marca_nombre}</td>
+                         <td>{producto.peso}</td>
+                         <td className={stockBajo ? 'stock-bajo-text' : ''}>
+                           {stockActual} {stockBajo && <span className="stock-warning">¡Bajo!</span>}
+                         </td>
+                         <td>
+                           <span className={producto.estado ? 'estado-activo' : 'estado-inactivo'}>
+                             {producto.estado ? 'Activo' : 'Inactivo'}
+                           </span>
+                         </td>
+                         <td className="acciones">
+                           <button 
+                             className="edit-btn"
+                             onClick={() => openModal('editar-producto', producto)}
+                             title="Editar"
+                           >
+                             <FaEdit />
+                           </button>
+                           <button 
+                             className="delete-btn"
+                             onClick={() => handleDelete('producto', producto.producto_id)}
+                             title="Eliminar"
+                           >
+                             <FaTrash />
+                           </button>
+                         </td>
+                       </tr>
+                     );
+                   })
+                 ) : (
+                   <tr>
+                     <td colSpan="7" className="no-data">No hay productos disponibles</td>
+                   </tr>
+                 )}
+               </tbody>
+             </table>
+           </div>
+         )}
+         
+         {renderPagination(filteredProductos.length)}
+       </div>
+     )}
+     
+     {activeTab === 'categorias' && (
+       <div className="productos-content">
+         <div className="productos-tools">
+           <button 
+             className="add-btn"
+             onClick={() => openModal('nueva-categoria')}
+           >
+             <FaPlus /> Nueva Categoría
+           </button>
+         </div>
+         
+         <div className="productos-table-container">
+           <table className="productos-table">
+             <thead>
+               <tr>
+                 <th onClick={() => handleSort('nombre')}>
+                   Nombre {renderSortIcon('nombre')}
+                 </th>
+                 <th onClick={() => handleSort('descripcion')}>
+                   Descripción {renderSortIcon('descripcion')}
+                 </th>
+                 <th onClick={() => handleSort('estado')}>
+                   Estado {renderSortIcon('estado')}
+                 </th>
+                 <th>Acciones</th>
+               </tr>
+             </thead>
+             <tbody>
+               {currentCategorias.length > 0 ? (
+                 currentCategorias.map(categoria => (
+                   <tr key={categoria.categoria_id}>
+                     <td>{categoria.nombre}</td>
+                     <td>{categoria.descripcion}</td>
+                     <td>
+                       <span className={categoria.estado ? 'estado-activo' : 'estado-inactivo'}>
+                         {categoria.estado ? 'Activo' : 'Inactivo'}
+                       </span>
+                     </td>
+                     <td className="acciones">
+                       <button 
+                         className="edit-btn"
+                         onClick={() => openModal('editar-categoria', categoria)}
+                         title="Editar"
+                       >
+                         <FaEdit />
+                       </button>
+                       <button 
+                         className="delete-btn"
+                         onClick={() => handleDelete('categoria', categoria.categoria_id)}
+                         title="Eliminar"
+                       >
+                         <FaTrash />
+                       </button>
+                     </td>
+                   </tr>
+                 ))
+               ) : (
+                 <tr>
+                   <td colSpan="4" className="no-data">No hay categorías disponibles</td>
+                 </tr>
+               )}
+             </tbody>
+           </table>
+         </div>
+         
+         {renderPagination(categorias.length)}
+       </div>
+     )}
+     
+     {activeTab === 'marcas' && (
+       <div className="productos-content">
+         <div className="productos-tools">
+           <button 
+             className="add-btn"
+             onClick={() => openModal('nueva-marca')}
+           >
+             <FaPlus /> Nueva Marca
+           </button>
+         </div>
+         
+         <div className="productos-table-container">
+           <table className="productos-table">
+             <thead>
+               <tr>
+                 <th onClick={() => handleSort('nombre')}>
+                   Nombre {renderSortIcon('nombre')}
+                 </th>
+                 <th onClick={() => handleSort('descripcion')}>
+                   Descripción {renderSortIcon('descripcion')}
+                 </th>
+                 <th>Logo</th>
+                 <th onClick={() => handleSort('estado')}>
+                   Estado {renderSortIcon('estado')}
+                 </th>
+                 <th>Acciones</th>
+               </tr>
+             </thead>
+             <tbody>
+               {currentMarcas.length > 0 ? (
+                 currentMarcas.map(marca => (
+                   <tr key={marca.marca_id}>
+                     <td>{marca.nombre}</td>
+                     <td>{marca.descripcion}</td>
+                     <td>
+                       {marca.logo_url && (
+                         <img 
+                           src={marca.logo_url} 
+                           alt={`Logo de ${marca.nombre}`} 
+                           className="marca-logo" 
+                         />
+                       )}
+                     </td>
+                     <td>
+                       <span className={marca.estado ? 'estado-activo' : 'estado-inactivo'}>
+                         {marca.estado ? 'Activo' : 'Inactivo'}
+                       </span>
+                     </td>
+                     <td className="acciones">
+                       <button 
+                         className="edit-btn"
+                         onClick={() => openModal('editar-marca', marca)}
+                         title="Editar"
+                       >
+                         <FaEdit />
+                       </button>
+                       <button 
+                         className="delete-btn"
+                         onClick={() => handleDelete('marca', marca.marca_id)}
+                         title="Eliminar"
+                       >
+                         <FaTrash />
+                       </button>
+                     </td>
+                   </tr>
+                 ))
+               ) : (
+                 <tr>
+                   <td colSpan="5" className="no-data">No hay marcas disponibles</td>
+                 </tr>
+               )}
+             </tbody>
+           </table>
+         </div>
+         
+         {renderPagination(marcas.length)}
+       </div>
+     )}
+     
+     {activeTab === 'inventario' && (
+       <div className="productos-content">
+         <div className="inventario-help-tooltip">
+           <div className="tooltip-icon">?</div>
+           <div className="tooltip-content">
+             <h4>Control de Inventario</h4>
+             <p>En esta sección puede gestionar el stock de productos.</p>
+             <ul>
+               <li><FaArrowUp className="tooltip-icon-up" /> Incrementa el stock en 1 unidad</li>
+               <li><FaArrowDown className="tooltip-icon-down" /> Reduce el stock en 1 unidad</li>
+             </ul>
+             <p>También puede editar manualmente el stock mínimo y actual haciendo clic en el botón de editar.</p>
+           </div>
+         </div>
+         
+         <div className="productos-table-container">
+           <table className="productos-table">
+             <thead>
+               <tr>
+                 <th onClick={() => handleSort('producto_nombre')}>
+                   Producto {renderSortIcon('producto_nombre')}
+                 </th>
+                 <th onClick={() => handleSort('stock_actual')}>
+                   Stock Actual {renderSortIcon('stock_actual')}
+                 </th>
+                 <th onClick={() => handleSort('stock_minimo')}>
+                   Stock Mínimo {renderSortIcon('stock_minimo')}
+                 </th>
+                 <th onClick={() => handleSort('ultima_actualizacion')}>
+                   Última Actualización {renderSortIcon('ultima_actualizacion')}
+                 </th>
+                 <th>Acciones</th>
+               </tr>
+             </thead>
+             <tbody>
+               {currentInventario.length > 0 ? (
+                 currentInventario.map(item => (
+                   <tr key={item.inventario_id} className={item.stock_actual < item.stock_minimo ? 'stock-bajo-row' : ''}>
+                     <td>{item.producto_nombre}</td>
+                     <td className={item.stock_actual < item.stock_minimo ? 'stock-bajo-text' : ''}>
+                       {item.stock_actual}
+                     </td>
+                     <td>{item.stock_minimo}</td>
+                     <td>{new Date(item.ultima_actualizacion).toLocaleString()}</td>
+                     <td className="acciones">
+                       <button 
+                         className="edit-btn"
+                         onClick={() => openModal('editar-inventario', item)}
+                         title="Editar inventario"
+                       >
+                         <FaEdit />
+                       </button>
+                       <div className="stock-buttons">
+                         <button 
+                           className="stock-up-btn"
+                           onClick={() => handleAjustarStock(item.inventario_id, 1)}
+                           title="Incrementar stock en 1 unidad"
+                         >
+                           <FaArrowUp />
+                         </button>
+                         <button 
+                           className="stock-down-btn"
+                           onClick={() => handleAjustarStock(item.inventario_id, -1)}
+                           title="Decrementar stock en 1 unidad"
+                         >
+                           <FaArrowDown />
+                         </button>
+                       </div>
+                     </td>
+                   </tr>
+                 ))
+               ) : (
+                 <tr>
+                   <td colSpan="5" className="no-data">No hay inventario disponible</td>
+                 </tr>
+               )}
+             </tbody>
+           </table>
+         </div>
+         
+         {renderPagination(inventario.length)}
+       </div>
+     )}
+     
+     {/* Modales para Formularios */}
+     {showModal && (
+       <div className="modal-overlay">
+         <div className="modal-container">
+           <div className="modal-header">
+             <h2>{modalType.includes('nuevo') || modalType.includes('nueva') ? 'Crear' : 'Editar'} {modalType.split('-')[1]}</h2>
+             <button className="close-btn" onClick={closeModal}>×</button>
+           </div>
+           
+           <div className="modal-body">
+             {modalType.includes('producto') && (
+               <form className="form" onSubmit={handleSubmitProducto}>
+                 <div className="form-group">
+                   <label htmlFor="nombre">Nombre:</label>
+                   <input 
+                     type="text" 
+                     id="nombre" 
+                     name="nombre" 
+                     value={productoForm.nombre} 
+                     onChange={handleProductoChange}
+                     required 
+                   />
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="descripcion">Descripción:</label>
+                   <textarea 
+                     id="descripcion" 
+                     name="descripcion" 
+                     value={productoForm.descripcion} 
+                     onChange={handleProductoChange}
+                     required 
+                     placeholder="Descripción del producto"
+                   />
+                 </div>
+                                   
+                 <div className="form-group">
+                   <label htmlFor="categoria">Categoría:</label>
+                   <select 
+                     id="categoria" 
+                     name="categoria" 
+                     value={productoForm.categoria} 
+                     onChange={handleProductoChange}
+                     required 
+                   >
+                     <option value="">Seleccione una categoría</option>
+                     {categorias.map(categoria => (
+                       <option key={categoria.categoria_id} value={categoria.categoria_id}>
+                         {categoria.nombre}
+                       </option>
+                     ))}
+                   </select>
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="marca">Marca:</label>
+                   <select 
+                     id="marca" 
+                     name="marca" 
+                     value={productoForm.marca} 
+                     onChange={handleProductoChange}
+                     required 
+                   >
+                     <option value="">Seleccione una marca</option>
+                     {marcas.map(marca => (
+                       <option key={marca.marca_id} value={marca.marca_id}>
+                         {marca.nombre}
+                       </option>
+                     ))}
+                   </select>
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="peso">Peso/Volumen:</label>
+                   <input 
+                     type="text" 
+                     id="peso" 
+                     name="peso" 
+                     value={productoForm.peso} 
+                     onChange={handleProductoChange}
+                     required 
+                     placeholder="Ej: 500g, 1kg, 250ml"
+                   />
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="fecha_vencimiento">Fecha de Vencimiento:</label>
+                   <input 
+                     type="date" 
+                     id="fecha_vencimiento" 
+                     name="fecha_vencimiento" 
+                     value={productoForm.fecha_vencimiento} 
+                     onChange={handleProductoChange}
+                   />
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="imagen_url">URL de Imagen:</label>
+                   <input 
+                     type="text" 
+                     id="imagen_url" 
+                     name="imagen_url" 
+                     value={productoForm.imagen_url || ''} 
+                     onChange={handleProductoChange}
+                     placeholder="https://ejemplo.com/imagen.jpg"
+                   />
+                 </div>
+                 
+                 <div className="form-buttons">
+                   <button type="submit" className="submit-btn">
+                     {modalType.includes('nuevo') ? 'Crear' : 'Actualizar'}
+                   </button>
+                   <button type="button" className="cancel-btn" onClick={closeModal}>
+                     Cancelar
+                   </button>
+                 </div>
+               </form>
+             )}
+             
+             {modalType.includes('categoria') && (
+               <form className="form" onSubmit={handleSubmitCategoria}>
+                 <div className="form-group">
+                   <label htmlFor="nombre">Nombre:</label>
+                   <input 
+                     type="text" 
+                     id="nombre" 
+                     name="nombre" 
+                     value={categoriaForm.nombre} 
+                     onChange={handleCategoriaChange}
+                     required 
+                   />
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="descripcion">Descripción:</label>
+                   <textarea 
+                     id="descripcion" 
+                     name="descripcion" 
+                     value={categoriaForm.descripcion} 
+                     onChange={handleCategoriaChange}
+                     required 
+                   />
+                 </div>
+                 
+                 <div className="form-buttons">
+                   <button type="submit" className="submit-btn">
+                     {modalType.includes('nueva') ? 'Crear' : 'Actualizar'}
+                   </button>
+                   <button type="button" className="cancel-btn" onClick={closeModal}>
+                     Cancelar
+                   </button>
+                 </div>
+               </form>
+             )}
+             
+             {modalType.includes('marca') && (
+               <form className="form" onSubmit={handleSubmitMarca}>
+                 <div className="form-group">
+                   <label htmlFor="nombre">Nombre:</label>
+                   <input 
+                     type="text" 
+                     id="nombre" 
+                     name="nombre" 
+                     value={marcaForm.nombre} 
+                     onChange={handleMarcaChange}
+                     required 
+                   />
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="descripcion">Descripción:</label>
+                   <textarea 
+                     id="descripcion" 
+                     name="descripcion" 
+                     value={marcaForm.descripcion} 
+                     onChange={handleMarcaChange}
+                     required 
+                   />
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="logo_url">URL del Logo:</label>
+                   <input 
+                     type="text" 
+                     id="logo_url" 
+                     name="logo_url" 
+                     value={marcaForm.logo_url || ''} 
+                     onChange={handleMarcaChange}
+                     placeholder="https://ejemplo.com/logo.png"
+                   />
+                 </div>
+                 
+                 <div className="form-buttons">
+                   <button type="submit" className="submit-btn">
+                     {modalType.includes('nueva') ? 'Crear' : 'Actualizar'}
+                   </button>
+                   <button type="button" className="cancel-btn" onClick={closeModal}>
+                     Cancelar
+                   </button>
+                 </div>
+               </form>
+             )}
+             
+             {modalType.includes('inventario') && (
+               <form className="form" onSubmit={handleSubmitInventario}>
+                 <div className="form-group">
+                   <label htmlFor="producto">Producto:</label>
+                   <input 
+                     type="text" 
+                     id="producto" 
+                     value={
+                       productos.find(p => p.producto_id === Number(inventarioForm.producto))?.nombre || ''
+                     }
+                     disabled
+                   />
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="stock_actual">Stock Actual:</label>
+                   <input 
+                     type="number" 
+                     id="stock_actual" 
+                     name="stock_actual" 
+                     value={inventarioForm.stock_actual} 
+                     onChange={handleInventarioChange}
+                     min="0"
+                     required 
+                   />
+                 </div>
+                 
+                 <div className="form-group">
+                   <label htmlFor="stock_minimo">Stock Mínimo:</label>
+                   <input 
+                     type="number" 
+                     id="stock_minimo" 
+                     name="stock_minimo" 
+                     value={inventarioForm.stock_minimo} 
+                     onChange={handleInventarioChange}
+                     min="0"
+                     required 
+                   />
+                 </div>
+                 
+                 <div className="form-buttons">
+                   <button type="submit" className="submit-btn">
+                     Actualizar
+                   </button>
+                   <button type="button" className="cancel-btn" onClick={closeModal}>
+                     Cancelar
+                   </button>
+                 </div>
+               </form>
+             )}
+           </div>
+         </div>
+       </div>
+     )}
+     
+     {/* Mensajes de error */}
+     {error && (
+       <div className="error-message">
+         <p>{error}</p>
+         <button onClick={() => setError('')} className="close-error-btn">×</button>
+       </div>
+     )}
+   </div>
+ );
 };
 
 export default ProductosModule;

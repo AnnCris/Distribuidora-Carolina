@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   FaHome,
@@ -12,6 +12,7 @@ import {
   FaHistory,
   FaHeart,
   FaTag,
+  FaBars,
 } from "react-icons/fa";
 import "./DashboardClient.css";
 import logoCircular from "../assets/distribuidora.png";
@@ -164,8 +165,10 @@ const DashboardClient = () => {
           {!sidebarCollapsed && <h2>Portal de Cliente</h2>}
         </div>
 
-        <div className="client-sidebar-toggle" onClick={toggleSidebar}>
-          {sidebarCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
+        <div className="client-sidebar-toggle-container">
+          <div className="client-sidebar-toggle" onClick={toggleSidebar}>
+            {sidebarCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
+          </div>
         </div>
 
         <div className="client-user-info">

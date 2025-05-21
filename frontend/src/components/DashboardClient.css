@@ -737,3 +737,78 @@
       margin-left: 0;
     }
   }
+
+  /* Añadir al final del archivo DashboardClient.css */
+
+.client-sidebar-header {
+  position: relative; /* Asegurar que el header pueda contener elementos posicionados */
+}
+
+.client-sidebar-toggle-container {
+  position: fixed;
+  top: 70px; /* Ajustar según la altura del header */
+  left: 280px; /* Ancho del sidebar expandido */
+  z-index: 100;
+  transition: left 0.3s ease; /* Para que se mueva con el sidebar */
+}
+
+.client-sidebar.collapsed .client-sidebar-toggle-container {
+  left: 80px; /* Ancho del sidebar colapsado */
+}
+
+.client-sidebar-toggle {
+  width: 36px;
+  height: 36px;
+  background-color: #e9424f; /* Color principal del tema client */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid white;
+  position: relative; /* Cambiado de absolute a relative */
+  right: auto; /* Eliminamos el right:-10px que tenía antes */
+  top: auto; /* Eliminamos el top:20px que tenía antes */
+}
+
+.client-sidebar-toggle svg {
+  font-size: 16px; /* Icono más grande */
+}
+
+/* Estilos para versión móvil/responsiva */
+@media (max-width: 576px) {
+  .client-sidebar-toggle-container {
+    display: none; /* Ocultamos en vista móvil ya que el sidebar se convierte en barra inferior */
+  }
+  
+  /* Añadimos un botón alternativo en la versión móvil dentro del header */
+  .client-mobile-toggle {
+    display: block;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    width: 36px;
+    height: 36px;
+    background-color: #e9424f;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    border: 1px solid white;
+  }
+  
+  .client-content {
+    padding-top: 60px; /* Espacio para el botón de toggle en móvil */
+  }
+}
+
+@media (min-width: 577px) {
+  .client-mobile-toggle {
+    display: none; /* Ocultamos en pantallas más grandes */
+  }
+}
