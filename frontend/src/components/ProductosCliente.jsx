@@ -14,6 +14,7 @@ import {
   FaStar,
   FaStarHalfAlt,
   FaRegStar,
+  FaTimes,
 } from "react-icons/fa";
 import "./ProductosCliente.css";
 
@@ -51,6 +52,53 @@ const ProductosCliente = () => {
     fetchMarcas();
   }, []);
 
+  // Cerrar filtros al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showFilters && !event.target.closest('.client-filter-dropdown')) {
+        setShowFilters(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilters]);
+
+  // Cerrar modal con tecla Escape
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && showProductModal) {
+        cerrarModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showProductModal]);
+
+  // Prevenir scroll del body cuando el modal está abierto
+  useEffect(() => {
+    if (showProductModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup al desmontar el componente
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showProductModal]);
+
+  // Resetear página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, selectedMarca, sortBy]);
+
   const fetchProductos = async () => {
     try {
       const token = localStorage.getItem("accessToken");
@@ -65,7 +113,7 @@ const ProductosCliente = () => {
       setLoading(false);
     } catch (err) {
       console.error("Error al cargar productos:", err);
-      setError("Error al cargar productos");
+      setError("Error al cargar productos. Por favor, intenta nuevamente.");
       setLoading(false);
     }
   };
@@ -120,11 +168,11 @@ const ProductosCliente = () => {
       case "nombre":
         return a.nombre.localeCompare(b.nombre);
       case "precio_asc":
-        return a.precio - b.precio; // Asumiendo que tendrás precio
+        return (a.precio || 25) - (b.precio || 25); // Precio por defecto si no existe
       case "precio_desc":
-        return b.precio - a.precio;
+        return (b.precio || 25) - (a.precio || 25);
       case "categoria":
-        return a.categoria_nombre.localeCompare(b.categoria_nombre);
+        return a.categoria_nombre?.localeCompare(b.categoria_nombre) || 0;
       default:
         return 0;
     }
@@ -143,27 +191,51 @@ const ProductosCliente = () => {
         ? prev.filter(id => id !== productId)
         : [...prev, productId]
     );
+    
+    const isFavorite = favoritos.includes(productId);
     setSuccessMessage(
-      favoritos.includes(productId) 
+      isFavorite 
         ? "Producto removido de favoritos" 
         : "Producto agregado a favoritos"
     );
-    setTimeout(() => setSuccessMessage(""), 2000);
+    setTimeout(() => setSuccessMessage(""), 3000);
   };
 
   // Función para ver detalles del producto
   const verDetalles = (producto) => {
+    console.log('Abriendo modal para:', producto); // Debug
     setSelectedProduct(producto);
     setShowProductModal(true);
+  };
+
+  // Función para cerrar modal
+  const cerrarModal = () => {
+    setShowProductModal(false);
+    setSelectedProduct(null);
   };
 
   // Función para agregar al carrito (simulada)
   const agregarAlCarrito = (producto) => {
     setSuccessMessage(`${producto.nombre} agregado al carrito`);
-    setTimeout(() => setSuccessMessage(""), 2000);
+    setTimeout(() => setSuccessMessage(""), 3000);
   };
 
-  // Render de tarjeta de producto
+  // Función para limpiar filtros
+  const limpiarFiltros = () => {
+    setSearchTerm("");
+    setSelectedCategory("todas");
+    setSelectedMarca("todas");
+    setSortBy("nombre");
+    setShowFilters(false);
+  };
+
+  // Función para truncar texto
+  const truncateText = (text, maxLength) => {
+    if (!text) return "";
+    return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+  };
+
+  // Render de tarjeta de producto mejorada
   const renderProductCard = (producto) => (
     <div key={producto.producto_id} className="client-product-card">
       <div className="client-product-image-container">
@@ -206,7 +278,9 @@ const ProductosCliente = () => {
 
       <div className="client-product-content">
         <div className="client-product-header">
-          <h3 className="client-product-name">{producto.nombre}</h3>
+          <h3 className="client-product-name" title={producto.nombre}>
+            {producto.nombre}
+          </h3>
           <div className="client-product-rating">
             <FaStar className="star filled" />
             <FaStar className="star filled" />
@@ -217,7 +291,9 @@ const ProductosCliente = () => {
           </div>
         </div>
 
-        <p className="client-product-description">{producto.descripcion}</p>
+        <p className="client-product-description" title={producto.descripcion}>
+          {producto.descripcion}
+        </p>
 
         <div className="client-product-details">
           <div className="client-product-detail">
@@ -232,12 +308,13 @@ const ProductosCliente = () => {
 
         <div className="client-product-footer">
           <div className="client-product-price">
-            <span className="price">Bs. 25.00</span>
+            <span className="price">Bs. {producto.precio || '25.00'}</span>
             <span className="price-unit">/ {producto.peso}</span>
           </div>
           <button 
             className="client-add-to-cart-btn"
             onClick={() => agregarAlCarrito(producto)}
+            title={`Agregar ${producto.nombre} al carrito`}
           >
             <FaShoppingCart /> Agregar
           </button>
@@ -283,7 +360,7 @@ const ProductosCliente = () => {
               className="client-filter-btn"
               onClick={() => setShowFilters(!showFilters)}
             >
-              <FaFilter /> Filtros <FaChevronDown />
+              <FaFilter /> Filtros <FaChevronDown style={{transform: showFilters ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease'}} />
             </button>
             {showFilters && (
               <div className="client-filter-menu">
@@ -321,12 +398,29 @@ const ProductosCliente = () => {
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                   >
-                    <option value="nombre">Nombre</option>
+                    <option value="nombre">Nombre A-Z</option>
                     <option value="categoria">Categoría</option>
                     <option value="precio_asc">Precio: Menor a Mayor</option>
                     <option value="precio_desc">Precio: Mayor a Menor</option>
                   </select>
                 </div>
+                <button 
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    marginTop: '15px',
+                    backgroundColor: '#f0f0f0',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    color: '#666'
+                  }}
+                  onClick={limpiarFiltros}
+                >
+                  Limpiar Filtros
+                </button>
               </div>
             )}
           </div>
@@ -336,17 +430,55 @@ const ProductosCliente = () => {
           <button
             className={`client-view-btn ${viewMode === "grid" ? "active" : ""}`}
             onClick={() => setViewMode("grid")}
+            title="Vista en cuadrícula"
           >
             <FaTh /> Cuadrícula
           </button>
           <button
             className={`client-view-btn ${viewMode === "list" ? "active" : ""}`}
             onClick={() => setViewMode("list")}
+            title="Vista en lista"
           >
             <FaList /> Lista
           </button>
         </div>
       </div>
+
+      {/* Indicador de resultados */}
+      {(searchTerm || selectedCategory !== "todas" || selectedMarca !== "todas") && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '15px 20px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span style={{color: '#666', fontWeight: '600'}}>
+            {sortedProducts.length} producto{sortedProducts.length !== 1 ? 's' : ''} encontrado{sortedProducts.length !== 1 ? 's' : ''}
+          </span>
+          <button 
+            onClick={limpiarFiltros}
+            style={{
+              background: 'none',
+              border: '1px solid #e9424f',
+              color: '#e9424f',
+              padding: '8px 15px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}
+          >
+            <FaTimes size={12} /> Limpiar
+          </button>
+        </div>
+      )}
 
       {/* Grid de productos */}
       <div className={`client-products-grid ${viewMode}`}>
@@ -356,7 +488,22 @@ const ProductosCliente = () => {
           <div className="client-no-products">
             <div className="client-no-products-icon">🔍</div>
             <h3>No se encontraron productos</h3>
-            <p>Intenta ajustar tus filtros de búsqueda</p>
+            <p>Intenta ajustar tus filtros de búsqueda o explorar otras categorías</p>
+            <button 
+              onClick={limpiarFiltros}
+              style={{
+                marginTop: '20px',
+                padding: '12px 25px',
+                backgroundColor: '#e9424f',
+                color: 'white',
+                border: 'none',
+                borderRadius: '25px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              Ver todos los productos
+            </button>
           </div>
         )}
       </div>
@@ -388,13 +535,14 @@ const ProductosCliente = () => {
 
       {/* Modal de detalles del producto */}
       {showProductModal && selectedProduct && (
-        <div className="client-modal-overlay" onClick={() => setShowProductModal(false)}>
+        <div className="client-modal-overlay" onClick={cerrarModal}>
           <div className="client-modal-container" onClick={(e) => e.stopPropagation()}>
             <div className="client-modal-header">
               <h2>{selectedProduct.nombre}</h2>
               <button 
                 className="client-modal-close"
-                onClick={() => setShowProductModal(false)}
+                onClick={cerrarModal}
+                title="Cerrar"
               >
                 ×
               </button>
@@ -402,26 +550,53 @@ const ProductosCliente = () => {
             <div className="client-modal-body">
               <div className="client-modal-product-image">
                 {selectedProduct.imagen_url ? (
-                  <img src={selectedProduct.imagen_url} alt={selectedProduct.nombre} />
-                ) : (
-                  <div className="client-modal-placeholder">🧀</div>
-                )}
+                  <img 
+                    src={selectedProduct.imagen_url} 
+                    alt={selectedProduct.nombre}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div 
+                  className="client-modal-placeholder" 
+                  style={{display: selectedProduct.imagen_url ? 'none' : 'flex'}}
+                >
+                  🧀
+                </div>
               </div>
               <div className="client-modal-product-info">
-                <p className="client-modal-description">{selectedProduct.descripcion}</p>
+                <p className="client-modal-description">
+                  {selectedProduct.descripcion || 'Sin descripción disponible'}
+                </p>
                 <div className="client-modal-details">
                   <div className="client-modal-detail">
-                    <strong>Categoría:</strong> {selectedProduct.categoria_nombre}
+                    <strong>Categoría:</strong> 
+                    <span>{selectedProduct.categoria_nombre || 'No especificada'}</span>
                   </div>
                   <div className="client-modal-detail">
-                    <strong>Marca:</strong> {selectedProduct.marca_nombre}
+                    <strong>Marca:</strong> 
+                    <span>{selectedProduct.marca_nombre || 'No especificada'}</span>
                   </div>
                   <div className="client-modal-detail">
-                    <strong>Peso:</strong> {selectedProduct.peso}
+                    <strong>Peso:</strong> 
+                    <span>{selectedProduct.peso || 'No especificado'}</span>
+                  </div>
+                  <div className="client-modal-detail">
+                    <strong>Precio:</strong> 
+                    <span>Bs. {selectedProduct.precio || '25.00'}</span>
                   </div>
                   {selectedProduct.fecha_vencimiento && (
                     <div className="client-modal-detail">
-                      <strong>Fecha de vencimiento:</strong> {new Date(selectedProduct.fecha_vencimiento).toLocaleDateString()}
+                      <strong>Fecha de vencimiento:</strong> 
+                      <span>{new Date(selectedProduct.fecha_vencimiento).toLocaleDateString('es-ES')}</span>
+                    </div>
+                  )}
+                  {selectedProduct.stock && (
+                    <div className="client-modal-detail">
+                      <strong>Stock disponible:</strong> 
+                      <span>{selectedProduct.stock} unidades</span>
                     </div>
                   )}
                 </div>
@@ -430,7 +605,7 @@ const ProductosCliente = () => {
                     className="client-modal-add-cart"
                     onClick={() => {
                       agregarAlCarrito(selectedProduct);
-                      setShowProductModal(false);
+                      cerrarModal();
                     }}
                   >
                     <FaShoppingCart /> Agregar al Carrito
@@ -440,7 +615,7 @@ const ProductosCliente = () => {
                     onClick={() => toggleFavorito(selectedProduct.producto_id)}
                   >
                     {favoritos.includes(selectedProduct.producto_id) ? <FaHeart /> : <FaRegHeart />}
-                    {favoritos.includes(selectedProduct.producto_id) ? 'En Favoritos' : 'Agregar a Favoritos'}
+                    {favoritos.includes(selectedProduct.producto_id) ? 'En Favoritos' : 'Favoritos'}
                   </button>
                 </div>
               </div>

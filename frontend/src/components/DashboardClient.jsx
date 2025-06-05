@@ -466,13 +466,6 @@ const DashboardClient = () => {
             </div>
           </div>
         )}
-
-        {activeModule !== "inicio" && activeModule !== "perfil" && (
-          <div className="client-module-placeholder">
-            <h2>Módulo de {activeModule}</h2>
-            <p>Esta sección está en desarrollo.</p>
-          </div>
-        )}
       </div>
     </div>
   );
