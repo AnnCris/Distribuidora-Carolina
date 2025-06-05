@@ -16,6 +16,8 @@ import {
 } from "react-icons/fa";
 import "./DashboardClient.css";
 import logoCircular from "../assets/distribuidora.png";
+import ProductosModule from "./ProductosModule";
+import ProductosCliente from "./ProductosCliente";
 
 const DashboardClient = () => {
   const navigate = useNavigate();
@@ -244,7 +246,7 @@ const DashboardClient = () => {
         <div className="client-content-header">
           <h1>
             {activeModule === "inicio" && "Bienvenido a Distribuidora Carolina"}
-            {activeModule === "productos" && "Catálogo de Productos"}
+            {activeModule === "productos" && <ProductosCliente />}
             {activeModule === "pedidos" && "Mis Pedidos"}
             {activeModule === "historial" && "Historial de Compras"}
             {activeModule === "favoritos" && "Mis Productos Favoritos"}
