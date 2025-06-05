@@ -40,8 +40,15 @@ class PersonaSerializer(serializers.ModelSerializer):
         return value
     
     def validate_email(self, value):
-        if Usuario.objects.filter(persona__email=value).exists():
-            raise serializers.ValidationError("Este correo electrónico ya está registrado")
+        # Solo validar unicidad durante creación, no durante actualización
+        if self.instance is None:  # Creación
+            if Usuario.objects.filter(persona__email=value).exists():
+                raise serializers.ValidationError("Este correo electrónico ya está registrado")
+        else:  # Actualización
+            # Verificar que el email no exista en otros usuarios (excluir el actual)
+            existing_user = Usuario.objects.filter(persona__email=value).exclude(persona=self.instance).first()
+            if existing_user:
+                raise serializers.ValidationError("Este correo electrónico ya está registrado")
         return value
 
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
@@ -120,23 +127,128 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
         read_only_fields = ['usuario_id', 'username', 'ultimo_login']
 
 class UsuarioActualizarSerializer(serializers.ModelSerializer):
-    persona = PersonaSerializer()
+    # Campos de persona como campos directos sin source para evitar problemas
+    nombres = serializers.CharField(max_length=255)
+    apellido_paterno = serializers.CharField(max_length=255)
+    apellido_materno = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    telefono = serializers.CharField(max_length=8)
+    direccion = serializers.CharField(max_length=255)
+    email = serializers.EmailField(max_length=255)
+    ci = serializers.CharField(max_length=20)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, style={'input_type': 'password'})
     
     class Meta:
         model = Usuario
-        fields = ['usuario_id', 'persona', 'rol', 'estado']
-        read_only_fields = ['usuario_id', 'username']
+        fields = [
+            'usuario_id', 'username', 'rol', 'estado', 'password',
+            'nombres', 'apellido_paterno', 'apellido_materno', 
+            'telefono', 'direccion', 'email', 'ci'
+        ]
+        read_only_fields = ['usuario_id']
+    
+    def validate_nombres(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("El nombre no puede estar vacío")
+        return value
+    
+    def validate_apellido_paterno(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("El apellido paterno no puede estar vacío")
+        return value
+    
+    def validate_telefono(self, value):
+        if not re.match(r'^\d{8}$', value):
+            raise serializers.ValidationError("El teléfono debe tener 8 dígitos")
+        return value
+    
+    def validate_ci(self, value):
+        if not re.match(r'^[0-9]+-[0-9A-Z]{2}$|^[0-9]+$', value):
+            raise serializers.ValidationError("El CI debe tener un formato válido (ej: 12345678 o 12345678-LP)")
+        
+        # Verificar que el CI no exista en otras personas (excluir la actual)
+        if self.instance:
+            if Persona.objects.filter(ci=value).exclude(pk=self.instance.persona.pk).exists():
+                raise serializers.ValidationError("Este carnet de identidad ya está registrado")
+        return value
+    
+    def validate_email(self, value):
+        # Verificar que el email no exista en otros usuarios (excluir el actual)
+        if self.instance:
+            existing_user = Usuario.objects.filter(persona__email=value).exclude(pk=self.instance.pk).first()
+            if existing_user:
+                raise serializers.ValidationError("Este correo electrónico ya está registrado")
+        return value
+    
+    def validate_password(self, value):
+        # Solo validar si se proporciona una nueva contraseña
+        if value and value.strip():
+            if len(value) < 8:
+                raise serializers.ValidationError("La contraseña debe tener al menos 8 caracteres")
+            
+            if not re.search(r'[A-Z]', value):
+                raise serializers.ValidationError("La contraseña debe contener al menos una letra mayúscula")
+            
+            if not re.search(r'[a-z]', value):
+                raise serializers.ValidationError("La contraseña debe contener al menos una letra minúscula")
+            
+            if not re.search(r'[0-9]', value):
+                raise serializers.ValidationError("La contraseña debe contener al menos un número")
+            
+            if not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
+                raise serializers.ValidationError("La contraseña debe contener al menos un carácter especial")
+            
+            try:
+                validate_password(value)
+            except exceptions.ValidationError as e:
+                raise serializers.ValidationError(list(e.messages))
+        
+        return value
     
     def update(self, instance, validated_data):
-        persona_data = validated_data.pop('persona', None)
+        # Extraer contraseña
+        password = validated_data.pop('password', None)
         
+        # Extraer campos de persona
+        persona_fields = ['nombres', 'apellido_paterno', 'apellido_materno', 'telefono', 'direccion', 'email', 'ci']
+        persona_data = {}
+        
+        for field in persona_fields:
+            if field in validated_data:
+                persona_data[field] = validated_data.pop(field)
+        
+        # Actualizar datos de la persona
         if persona_data:
-            persona = instance.persona
+            persona_instance = instance.persona
             for attr, value in persona_data.items():
-                setattr(persona, attr, value)
-            persona.save()
+                setattr(persona_instance, attr, value)
+            persona_instance.save()
         
-        return super().update(instance, validated_data)
+        # Actualizar contraseña si se proporciona
+        if password and password.strip():
+            instance.set_password(password)
+        
+        # Actualizar otros campos del usuario
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
+    
+    def to_representation(self, instance):
+        """Personalizar la representación para incluir datos de persona"""
+        data = super().to_representation(instance)
+        
+        # Agregar datos de persona
+        if instance.persona:
+            data['nombres'] = instance.persona.nombres
+            data['apellido_paterno'] = instance.persona.apellido_paterno
+            data['apellido_materno'] = instance.persona.apellido_materno
+            data['telefono'] = instance.persona.telefono
+            data['direccion'] = instance.persona.direccion
+            data['email'] = instance.persona.email
+            data['ci'] = instance.persona.ci
+        
+        return data
 
 class CambioContraseñaSerializer(serializers.Serializer):
     password_actual = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})

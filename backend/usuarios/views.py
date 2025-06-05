@@ -58,6 +58,51 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             ip=get_client_ip(self.request)
         )
     
+    def update(self, request, *args, **kwargs):
+        """Sobrescribir el método update para mejor manejo de errores"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            
+            # Registro en los logs del sistema
+            SistemaLog.objects.create(
+                usuario=request.user,
+                accion=f"Actualización de usuario: {instance.username}",
+                tabla="usuarios",
+                ip=get_client_ip(request)
+            )
+            
+            if getattr(instance, '_prefetched_objects_cache', None):
+                instance._prefetched_objects_cache = {}
+            
+            # Recargar la instancia para obtener datos actualizados
+            instance.refresh_from_db()
+            
+            # Usar el serializer de detalle para la respuesta
+            response_serializer = UsuarioDetalleSerializer(instance)
+            return Response(response_serializer.data)
+            
+        except serializers.ValidationError as e:
+            print(f"Error de validación: {e.detail}")
+            print(f"Datos recibidos: {request.data}")
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Error inesperado en actualización de usuario: {str(e)}")
+            print(f"Datos recibidos: {request.data}")
+            return Response(
+                {'error': 'Error interno del servidor'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def partial_update(self, request, *args, **kwargs):
+        """Manejo de actualizaciones parciales"""
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+    
     @action(detail=True, methods=['post'], serializer_class=CambioContraseñaSerializer)
     def cambiar_password(self, request, pk=None):
         usuario = self.get_object()
@@ -83,7 +128,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def perfil(self, request):
         serializer = UsuarioDetalleSerializer(request.user)
         return Response(serializer.data)
-
 class RegistroUsuarioView(generics.CreateAPIView):
     queryset = Usuario.objects.all()
     serializer_class = RegistroUsuarioSerializer
