@@ -337,7 +337,6 @@
   height: 2.6rem; /* Altura fija para 2 líneas */
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -370,7 +369,6 @@
   height: 4.5rem; /* Altura fija para 3 líneas */
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   flex-grow: 1;
 }
@@ -470,12 +468,10 @@
 
 .client-products-grid.list .client-product-name {
   height: auto; /* Permitir altura automática en lista */
-  -webkit-line-clamp: unset;
 }
 
 .client-products-grid.list .client-product-description {
   height: auto; /* Permitir altura automática en lista */
-  -webkit-line-clamp: 4; /* Más líneas en vista lista */
   max-height: 6rem;
 }
 
