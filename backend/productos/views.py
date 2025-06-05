@@ -2,7 +2,10 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import models
+import os
+from django.conf import settings
 from .models import Distribuidora, Categoria, Marca, Producto, Inventario
 from .serializers import (
     DistribuidoraSerializer, CategoriaSerializer, MarcaSerializer, 
@@ -18,6 +21,15 @@ def get_client_ip(request):
     else:
         ip = request.META.get('REMOTE_ADDR')
     return ip
+
+def delete_old_file(file_field):
+    """Elimina el archivo anterior si existe"""
+    if file_field and hasattr(file_field, 'path'):
+        try:
+            if os.path.isfile(file_field.path):
+                os.remove(file_field.path)
+        except:
+            pass
 
 class DistribuidoraViewSet(viewsets.ModelViewSet):
     queryset = Distribuidora.objects.all()
@@ -85,6 +97,13 @@ class MarcaViewSet(viewsets.ModelViewSet):
     queryset = Marca.objects.all()
     serializer_class = MarcaSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    
+    def get_serializer_context(self):
+        """Agregar request al contexto del serializer para URLs completas"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
     
     def perform_create(self, serializer):
         marca = serializer.save()
@@ -97,7 +116,16 @@ class MarcaViewSet(viewsets.ModelViewSet):
         )
     
     def perform_update(self, serializer):
+        # Obtener la instancia anterior para eliminar el logo viejo si se reemplaza
+        instance = self.get_object()
+        old_logo = instance.logo
+        
         marca = serializer.save()
+        
+        # Si se subió un nuevo logo, eliminar el anterior
+        if 'logo' in self.request.FILES and old_logo != marca.logo:
+            delete_old_file(old_logo)
+        
         # Registrar en el log del sistema
         SistemaLog.objects.create(
             usuario=self.request.user,
@@ -108,6 +136,9 @@ class MarcaViewSet(viewsets.ModelViewSet):
     
     def perform_destroy(self, instance):
         nombre = instance.nombre
+        # Eliminar el archivo de logo
+        delete_old_file(instance.logo)
+        
         instance.estado = False
         instance.save()
         # Registrar en el log del sistema
@@ -121,11 +152,18 @@ class MarcaViewSet(viewsets.ModelViewSet):
 class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.all()
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return ProductoDetalleSerializer
         return ProductoSerializer
+    
+    def get_serializer_context(self):
+        """Agregar request al contexto del serializer para URLs completas"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
     
     def perform_create(self, serializer):
         producto = serializer.save()
@@ -144,7 +182,16 @@ class ProductoViewSet(viewsets.ModelViewSet):
         )
     
     def perform_update(self, serializer):
+        # Obtener la instancia anterior para eliminar la imagen vieja si se reemplaza
+        instance = self.get_object()
+        old_imagen = instance.imagen
+        
         producto = serializer.save()
+        
+        # Si se subió una nueva imagen, eliminar la anterior
+        if 'imagen' in self.request.FILES and old_imagen != producto.imagen:
+            delete_old_file(old_imagen)
+        
         # Registrar en el log del sistema
         SistemaLog.objects.create(
             usuario=self.request.user,
@@ -155,6 +202,9 @@ class ProductoViewSet(viewsets.ModelViewSet):
     
     def perform_destroy(self, instance):
         nombre = instance.nombre
+        # Eliminar el archivo de imagen
+        delete_old_file(instance.imagen)
+        
         instance.estado = False
         instance.save()
         # Registrar en el log del sistema

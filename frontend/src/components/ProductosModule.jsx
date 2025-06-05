@@ -22,6 +22,8 @@ import {
   FaList,
   FaChevronDown,
   FaQuestionCircle,
+  FaImage,
+  FaTimes,
 } from "react-icons/fa";
 import "./ProductosModule.css";
 
@@ -63,6 +65,10 @@ const ProductosModule = () => {
   // Estado para ver filtros
   const [showFilters, setShowFilters] = useState(false);
 
+  // Estados para preview de imágenes
+  const [imagePreview, setImagePreview] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+
   // Estado para formularios
   const [productoForm, setProductoForm] = useState({
     nombre: "",
@@ -72,7 +78,7 @@ const ProductosModule = () => {
     distribuidora: 1,
     peso: "",
     fecha_vencimiento: "",
-    imagen_url: "",
+    imagen: null,
     estado: true,
   });
 
@@ -85,7 +91,7 @@ const ProductosModule = () => {
   const [marcaForm, setMarcaForm] = useState({
     nombre: "",
     descripcion: "",
-    logo_url: "",
+    logo: null,
     estado: true,
   });
 
@@ -284,42 +290,42 @@ const ProductosModule = () => {
   );
 
   // Filtrado para categorías
-const filteredCategorias = categorias.filter(categoria => {
-  const matchesSearch = searchTerm === '' || 
-    categoria.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (categoria.descripcion && categoria.descripcion.toLowerCase().includes(searchTerm.toLowerCase()));
-  
-  const matchesEstado = 
-    filters.estado === 'todos' || 
-    (filters.estado === 'activo' && categoria.estado) ||
-    (filters.estado === 'inactivo' && !categoria.estado);
+  const filteredCategorias = categorias.filter(categoria => {
+    const matchesSearch = searchTerm === '' || 
+      categoria.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (categoria.descripcion && categoria.descripcion.toLowerCase().includes(searchTerm.toLowerCase()));
     
-  return matchesSearch && matchesEstado;
-});
+    const matchesEstado = 
+      filters.estado === 'todos' || 
+      (filters.estado === 'activo' && categoria.estado) ||
+      (filters.estado === 'inactivo' && !categoria.estado);
+      
+    return matchesSearch && matchesEstado;
+  });
 
-// Filtrado para marcas
-const filteredMarcas = marcas.filter(marca => {
-  const matchesSearch = searchTerm === '' || 
-    marca.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (marca.descripcion && marca.descripcion.toLowerCase().includes(searchTerm.toLowerCase()));
-  
-  const matchesEstado = 
-    filters.estado === 'todos' || 
-    (filters.estado === 'activo' && marca.estado) ||
-    (filters.estado === 'inactivo' && !marca.estado);
+  // Filtrado para marcas
+  const filteredMarcas = marcas.filter(marca => {
+    const matchesSearch = searchTerm === '' || 
+      marca.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (marca.descripcion && marca.descripcion.toLowerCase().includes(searchTerm.toLowerCase()));
     
-  return matchesSearch && matchesEstado;
-});
+    const matchesEstado = 
+      filters.estado === 'todos' || 
+      (filters.estado === 'activo' && marca.estado) ||
+      (filters.estado === 'inactivo' && !marca.estado);
+      
+    return matchesSearch && matchesEstado;
+  });
 
   // Filtrar y ordenar categorías
-  const sortedCategorias = sortItems(categorias, sortField, sortDirection);
+  const sortedCategorias = sortItems(filteredCategorias, sortField, sortDirection);
   const currentCategorias = sortedCategorias.slice(
     indexOfFirstItem,
     indexOfLastItem
   );
 
   // Filtrar y ordenar marcas
-  const sortedMarcas = sortItems(marcas, sortField, sortDirection);
+  const sortedMarcas = sortItems(filteredMarcas, sortField, sortDirection);
   const currentMarcas = sortedMarcas.slice(indexOfFirstItem, indexOfLastItem);
 
   // Filtrar y ordenar inventario
@@ -328,6 +334,49 @@ const filteredMarcas = marcas.filter(marca => {
     indexOfFirstItem,
     indexOfLastItem
   );
+
+  // Función para manejar archivos
+  const handleFileChange = (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validar tamaño del archivo (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError("El archivo no puede ser mayor a 5MB");
+        return;
+      }
+
+      // Validar tipo de archivo
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setError("Tipo de archivo no permitido. Use JPG, PNG, GIF o WebP");
+        return;
+      }
+
+      // Crear preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (type === 'imagen') {
+          setImagePreview(e.target.result);
+          setProductoForm(prev => ({ ...prev, imagen: file }));
+        } else if (type === 'logo') {
+          setLogoPreview(e.target.result);
+          setMarcaForm(prev => ({ ...prev, logo: file }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Función para remover imagen
+  const removeImage = (type) => {
+    if (type === 'imagen') {
+      setImagePreview(null);
+      setProductoForm(prev => ({ ...prev, imagen: null }));
+    } else if (type === 'logo') {
+      setLogoPreview(null);
+      setMarcaForm(prev => ({ ...prev, logo: null }));
+    }
+  };
 
   // Función para abrir modal
   const openModal = (type, item = null) => {
@@ -345,22 +394,26 @@ const filteredMarcas = marcas.filter(marca => {
         fecha_vencimiento: item.fecha_vencimiento
           ? item.fecha_vencimiento.split("T")[0]
           : "",
-        imagen_url: item.imagen_url || "",
-        estado: item.estado, // Incluir el estado
+        imagen: null,
+        estado: item.estado,
       });
+      // Mostrar imagen actual si existe
+      setImagePreview(item.imagen_url || null);
     } else if (type.includes("categoria") && item) {
       setCategoriaForm({
         nombre: item.nombre,
         descripcion: item.descripcion,
-        estado: item.estado, // Incluir el estado
+        estado: item.estado,
       });
     } else if (type.includes("marca") && item) {
       setMarcaForm({
         nombre: item.nombre,
         descripcion: item.descripcion,
-        logo_url: item.logo_url || "",
-        estado: item.estado, // Incluir el estado
+        logo: null,
+        estado: item.estado,
       });
+      // Mostrar logo actual si existe
+      setLogoPreview(item.logo_url || null);
     } else if (type.includes("inventario") && item) {
       setInventarioForm({
         producto: item.producto,
@@ -378,22 +431,24 @@ const filteredMarcas = marcas.filter(marca => {
           distribuidora: 1,
           peso: "",
           fecha_vencimiento: "",
-          imagen_url: "",
-          estado: true, // Por defecto activo
+          imagen: null,
+          estado: true,
         });
+        setImagePreview(null);
       } else if (type.includes("categoria")) {
         setCategoriaForm({
           nombre: "",
           descripcion: "",
-          estado: true, // Por defecto activo
+          estado: true,
         });
       } else if (type.includes("marca")) {
         setMarcaForm({
           nombre: "",
           descripcion: "",
-          logo_url: "",
-          estado: true, // Por defecto activo
+          logo: null,
+          estado: true,
         });
+        setLogoPreview(null);
       }
     }
 
@@ -405,6 +460,8 @@ const filteredMarcas = marcas.filter(marca => {
     setShowModal(false);
     setModalType("");
     setCurrentItem(null);
+    setImagePreview(null);
+    setLogoPreview(null);
   };
 
   // Manejo de cambios en formularios
@@ -446,28 +503,26 @@ const filteredMarcas = marcas.filter(marca => {
     try {
       const token = localStorage.getItem("accessToken");
 
-      // Verificar que todos los campos requeridos estén presentes
-      if (
-        !productoForm.nombre ||
-        !productoForm.categoria ||
-        !productoForm.marca
-      ) {
+      if (!productoForm.nombre || !productoForm.categoria || !productoForm.marca) {
         setError("Por favor complete todos los campos requeridos");
         return;
       }
 
-      // Preparar datos para enviar al servidor con conversiones de tipo adecuadas
-      const productoData = {
-        nombre: productoForm.nombre,
-        descripcion: productoForm.descripcion || "",
-        categoria: parseInt(productoForm.categoria, 10),
-        marca: parseInt(productoForm.marca, 10),
-        distribuidora: parseInt(productoForm.distribuidora, 10),
-        peso: productoForm.peso || "",
-        fecha_vencimiento: productoForm.fecha_vencimiento || null,
-        imagen_url: productoForm.imagen_url || "",
-        estado: productoForm.estado, // Incluir el estado
-      };
+      // Crear FormData para manejar archivos
+      const formData = new FormData();
+      formData.append('nombre', productoForm.nombre);
+      formData.append('descripcion', productoForm.descripcion || '');
+      formData.append('categoria', parseInt(productoForm.categoria, 10));
+      formData.append('marca', parseInt(productoForm.marca, 10));
+      formData.append('distribuidora', parseInt(productoForm.distribuidora, 10));
+      formData.append('peso', productoForm.peso || '');
+      formData.append('fecha_vencimiento', productoForm.fecha_vencimiento || '');
+      formData.append('estado', productoForm.estado);
+
+      // Agregar imagen si existe
+      if (productoForm.imagen) {
+        formData.append('imagen', productoForm.imagen);
+      }
 
       if (currentItem) {
         // Actualizar producto existente
@@ -475,141 +530,42 @@ const filteredMarcas = marcas.filter(marca => {
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8000"
           }/api/productos/productos/${currentItem.producto_id}/`,
-          productoData,
+          formData,
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+              'Content-Type': 'multipart/form-data',
             },
           }
         );
       } else {
         // Crear nuevo producto
-        const response = await axios.post(
-          `${
-            process.env.REACT_APP_API_URL || "http://localhost:8000"
-          }/api/productos/productos/`,
-          productoData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        // Si estamos creando un nuevo producto, actualicemos la lista inmediatamente
-        // añadiendo el nuevo producto al estado
-        const newProducto = response.data;
-
-        // Añadir información adicional como categoria_nombre y marca_nombre
-        const categoriaObj = categorias.find(
-          (cat) => cat.categoria_id === parseInt(productoForm.categoria, 10)
-        );
-        const marcaObj = marcas.find(
-          (marca) => marca.marca_id === parseInt(productoForm.marca, 10)
-        );
-
-        newProducto.categoria_nombre = categoriaObj ? categoriaObj.nombre : "";
-        newProducto.marca_nombre = marcaObj ? marcaObj.nombre : "";
-
-        // Actualizar el estado de productos directamente
-        setProductos((prevProductos) => [...prevProductos, newProducto]);
-
-        // También configuramos el inventario inicial para este producto
         await axios.post(
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8000"
-          }/api/productos/inventario/`,
+          }/api/productos/productos/`,
+          formData,
           {
-            producto: newProducto.producto_id,
-            stock_actual: 0,
-            stock_minimo: 5,
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data',
+            },
           }
         );
       }
 
-      // Hacer una carga completa después de la actualización
       await Promise.all([loadProductos(), loadInventario()]);
       closeModal();
 
-      // Mostrar mensaje de éxito
       setSuccessMessage(
         currentItem
           ? "Producto actualizado correctamente"
           : "Producto creado correctamente"
       );
-      setTimeout(() => setSuccessMessage(""), 3000); // Desaparece después de 3 segundos
-    } catch (err) {
-      console.error("Error al guardar producto:", err);
-
-      if (err.response && err.response.data) {
-        console.error("Detalles del error:", err.response.data);
-        let errorMessage = "Error al guardar producto: ";
-
-        if (typeof err.response.data === "object") {
-          Object.keys(err.response.data).forEach((key) => {
-            errorMessage += `${key}: ${err.response.data[key]} `;
-          });
-        } else {
-          errorMessage += err.response.data;
-        }
-
-        setError(errorMessage);
-      } else {
-        setError("Error al guardar producto. Por favor, intente nuevamente.");
-      }
-    }
-  };
-
-  const handleSubmitCategoria = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (currentItem) {
-        // Actualizar categoría existente
-        await axios.put(
-          `${
-            process.env.REACT_APP_API_URL || "http://localhost:8000"
-          }/api/productos/categorias/${currentItem.categoria_id}/`,
-          categoriaForm,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-      } else {
-        // Crear nueva categoría
-        const response = await axios.post(
-          `${
-            process.env.REACT_APP_API_URL || "http://localhost:8000"
-          }/api/productos/categorias/`,
-          categoriaForm,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        // Añadir la nueva categoría al estado
-        const newCategoria = response.data;
-        setCategorias((prevCategorias) => [...prevCategorias, newCategoria]);
-      }
-
-      await loadCategorias();
-      closeModal();
-
-      // Mostrar mensaje de éxito
-      setSuccessMessage(
-        currentItem
-          ? "Categoría actualizada correctamente"
-          : "Categoría creada correctamente"
-      );
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      console.error("Error al guardar categoría:", err);
-      setError("Error al guardar categoría");
+      console.error("Error al guardar producto:", err);
+      setError("Error al guardar producto. Por favor, intente nuevamente.");
     }
   };
 
@@ -617,38 +573,51 @@ const filteredMarcas = marcas.filter(marca => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("accessToken");
+
+      // Crear FormData para manejar archivos
+      const formData = new FormData();
+      formData.append('nombre', marcaForm.nombre);
+      formData.append('descripcion', marcaForm.descripcion);
+      formData.append('estado', marcaForm.estado);
+
+      // Agregar logo si existe
+      if (marcaForm.logo) {
+        formData.append('logo', marcaForm.logo);
+      }
+
       if (currentItem) {
         // Actualizar marca existente
         await axios.put(
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8000"
           }/api/productos/marcas/${currentItem.marca_id}/`,
-          marcaForm,
+          formData,
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data',
+            },
           }
         );
       } else {
         // Crear nueva marca
-        const response = await axios.post(
+        await axios.post(
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8000"
           }/api/productos/marcas/`,
-          marcaForm,
+          formData,
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data',
+            },
           }
         );
-
-        // Añadir la nueva marca al estado
-        const newMarca = response.data;
-        setMarcas((prevMarcas) => [...prevMarcas, newMarca]);
       }
 
       await loadMarcas();
       closeModal();
 
-      // Mostrar mensaje de éxito
       setSuccessMessage(
         currentItem
           ? "Marca actualizada correctamente"
@@ -661,12 +630,53 @@ const filteredMarcas = marcas.filter(marca => {
     }
   };
 
+  // Las otras funciones de submit permanecen igual...
+  const handleSubmitCategoria = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (currentItem) {
+        await axios.put(
+          `${
+            process.env.REACT_APP_API_URL || "http://localhost:8000"
+          }/api/productos/categorias/${currentItem.categoria_id}/`,
+          categoriaForm,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      } else {
+        await axios.post(
+          `${
+            process.env.REACT_APP_API_URL || "http://localhost:8000"
+          }/api/productos/categorias/`,
+          categoriaForm,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
+
+      await loadCategorias();
+      closeModal();
+
+      setSuccessMessage(
+        currentItem
+          ? "Categoría actualizada correctamente"
+          : "Categoría creada correctamente"
+      );
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (err) {
+      console.error("Error al guardar categoría:", err);
+      setError("Error al guardar categoría");
+    }
+  };
+
   const handleSubmitInventario = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("accessToken");
       if (currentItem) {
-        // Actualizar inventario existente
         await axios.put(
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8000"
@@ -681,7 +691,6 @@ const filteredMarcas = marcas.filter(marca => {
       await loadInventario();
       closeModal();
 
-      // Mostrar mensaje de éxito
       setSuccessMessage("Inventario actualizado correctamente");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
@@ -700,10 +709,8 @@ const filteredMarcas = marcas.filter(marca => {
       const token = localStorage.getItem("accessToken");
 
       if (type === "producto") {
-        // Primero, buscar el inventario asociado a este producto
         const inventarioItem = inventario.find((item) => item.producto === id);
 
-        // Si existe un inventario asociado, eliminarlo primero
         if (inventarioItem) {
           await axios.delete(
             `${
@@ -714,7 +721,6 @@ const filteredMarcas = marcas.filter(marca => {
             }
           );
 
-          // Actualizar el estado eliminando el inventario
           setInventario((prevInventario) =>
             prevInventario.filter(
               (i) => i.inventario_id !== inventarioItem.inventario_id
@@ -722,7 +728,6 @@ const filteredMarcas = marcas.filter(marca => {
           );
         }
 
-        // Ahora eliminar el producto
         await axios.delete(
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8000"
@@ -732,7 +737,6 @@ const filteredMarcas = marcas.filter(marca => {
           }
         );
 
-        // Actualizar el estado eliminando el producto
         setProductos((prevProductos) =>
           prevProductos.filter((p) => p.producto_id !== id)
         );
@@ -748,7 +752,6 @@ const filteredMarcas = marcas.filter(marca => {
           }
         );
 
-        // Actualizar el estado eliminando la categoría
         setCategorias((prevCategorias) =>
           prevCategorias.filter((c) => c.categoria_id !== id)
         );
@@ -764,12 +767,10 @@ const filteredMarcas = marcas.filter(marca => {
           }
         );
 
-        // Actualizar el estado eliminando la marca
         setMarcas((prevMarcas) => prevMarcas.filter((m) => m.marca_id !== id));
 
         setSuccessMessage("Marca eliminada correctamente");
       } else if (type === "inventario") {
-        // Agregar la opción de eliminar inventario directamente
         await axios.delete(
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8000"
@@ -779,7 +780,6 @@ const filteredMarcas = marcas.filter(marca => {
           }
         );
 
-        // Actualizar el estado eliminando el inventario
         setInventario((prevInventario) =>
           prevInventario.filter((i) => i.inventario_id !== id)
         );
@@ -808,7 +808,6 @@ const filteredMarcas = marcas.filter(marca => {
         }
       );
 
-      // Actualizar el estado directamente
       setInventario((prevInventario) =>
         prevInventario.map((item) =>
           item.inventario_id === inventarioId
@@ -1069,6 +1068,19 @@ const filteredMarcas = marcas.filter(marca => {
                         </div>
                       </div>
 
+                      {/* Mostrar imagen del producto */}
+                      {producto.imagen_url && (
+                        <div className="producto-image">
+                          <img 
+                            src={producto.imagen_url} 
+                            alt={producto.nombre}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+
                       <div className="producto-card-content">
                         <h3 className="producto-nombre">{producto.nombre}</h3>
                         <div className="producto-info">
@@ -1232,6 +1244,42 @@ const filteredMarcas = marcas.filter(marca => {
       {activeTab === "categorias" && (
         <div className="productos-content">
           <div className="productos-tools">
+            <div className="search-filter-section">
+              <div className="search-bar">
+                <FaSearch />
+                <input
+                  type="text"
+                  placeholder="Buscar categorías..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-dropdown">
+                <button
+                  className="filter-btn"
+                  onClick={() => setShowFilters(!showFilters)}>
+                  <FaFilter /> Filtros <FaChevronDown />
+                </button>
+                {showFilters && (
+                  <div className="filter-menu">
+                    <div className="filter-group">
+                      <label>Estado:</label>
+                      <select
+                        value={filters.estado}
+                        onChange={(e) =>
+                          setFilters({ ...filters, estado: e.target.value })
+                        }>
+                        <option value="todos">Todos</option>
+                        <option value="activo">Activos</option>
+                        <option value="inactivo">Inactivos</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <button
               className="add-btn"
               onClick={() => openModal("nueva-categoria")}>
@@ -1302,13 +1350,49 @@ const filteredMarcas = marcas.filter(marca => {
             </table>
           </div>
 
-          {renderPagination(categorias.length)}
+          {renderPagination(filteredCategorias.length)}
         </div>
       )}
 
       {activeTab === "marcas" && (
         <div className="productos-content">
           <div className="productos-tools">
+            <div className="search-filter-section">
+              <div className="search-bar">
+                <FaSearch />
+                <input
+                  type="text"
+                  placeholder="Buscar marcas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-dropdown">
+                <button
+                  className="filter-btn"
+                  onClick={() => setShowFilters(!showFilters)}>
+                  <FaFilter /> Filtros <FaChevronDown />
+                </button>
+                {showFilters && (
+                  <div className="filter-menu">
+                    <div className="filter-group">
+                      <label>Estado:</label>
+                      <select
+                        value={filters.estado}
+                        onChange={(e) =>
+                          setFilters({ ...filters, estado: e.target.value })
+                        }>
+                        <option value="todos">Todos</option>
+                        <option value="activo">Activos</option>
+                        <option value="inactivo">Inactivos</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <button
               className="add-btn"
               onClick={() => openModal("nueva-marca")}>
@@ -1383,7 +1467,7 @@ const filteredMarcas = marcas.filter(marca => {
             </table>
           </div>
 
-          {renderPagination(marcas.length)}
+          {renderPagination(filteredMarcas.length)}
         </div>
       )}
 
@@ -1616,16 +1700,34 @@ const filteredMarcas = marcas.filter(marca => {
                     />
                   </div>
 
+                  {/* Campo de imagen del producto */}
                   <div className="form-group">
-                    <label htmlFor="imagen_url">URL de Imagen:</label>
-                    <input
-                      type="text"
-                      id="imagen_url"
-                      name="imagen_url"
-                      value={productoForm.imagen_url || ""}
-                      onChange={handleProductoChange}
-                      placeholder="https://ejemplo.com/imagen.jpg"
-                    />
+                    <label htmlFor="imagen">Imagen del Producto:</label>
+                    <div className="file-input-container">
+                      <input
+                        type="file"
+                        id="imagen"
+                        name="imagen"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, 'imagen')}
+                        className="file-input"
+                      />
+                      {imagePreview && (
+                        <div className="image-preview">
+                          <img src={imagePreview} alt="Vista previa" />
+                          <button
+                            type="button"
+                            className="remove-image-btn"
+                            onClick={() => removeImage('imagen')}
+                            title="Eliminar imagen">
+                            <FaTimes />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <small className="help-text">
+                      Formatos permitidos: JPG, PNG, GIF, WebP (máximo 5MB)
+                    </small>
                   </div>
 
                   <div className="form-group form-checkbox">
@@ -1730,16 +1832,34 @@ const filteredMarcas = marcas.filter(marca => {
                     />
                   </div>
 
+                  {/* Campo de logo de la marca */}
                   <div className="form-group">
-                    <label htmlFor="logo_url">URL del Logo:</label>
-                    <input
-                      type="text"
-                      id="logo_url"
-                      name="logo_url"
-                      value={marcaForm.logo_url || ""}
-                      onChange={handleMarcaChange}
-                      placeholder="https://ejemplo.com/logo.png"
-                    />
+                    <label htmlFor="logo">Logo de la Marca:</label>
+                    <div className="file-input-container">
+                      <input
+                        type="file"
+                        id="logo"
+                        name="logo"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, 'logo')}
+                        className="file-input"
+                      />
+                      {logoPreview && (
+                        <div className="image-preview">
+                          <img src={logoPreview} alt="Vista previa del logo" />
+                          <button
+                            type="button"
+                            className="remove-image-btn"
+                            onClick={() => removeImage('logo')}
+                            title="Eliminar logo">
+                            <FaTimes />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <small className="help-text">
+                      Formatos permitidos: JPG, PNG, GIF, WebP (máximo 5MB)
+                    </small>
                   </div>
 
                   <div className="form-group form-checkbox">

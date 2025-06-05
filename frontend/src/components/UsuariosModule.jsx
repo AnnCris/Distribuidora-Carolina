@@ -13,7 +13,14 @@ import {
   FaSortUp,
   FaSortDown,
   FaChevronLeft,
-  FaChevronRight
+  FaChevronRight,
+  FaCalendarAlt,
+  FaFilter,
+  FaTh,
+  FaList,
+  FaChevronDown,
+  FaUsers,
+  FaUser
 } from 'react-icons/fa';
 import './UsuariosModule.css';
 
@@ -25,6 +32,10 @@ const UsuariosModule = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Vista de usuarios (grid o tabla)
+  const [viewMode, setViewMode] = useState('grid');
   
   // Estado para paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,10 +45,19 @@ const UsuariosModule = () => {
   const [sortField, setSortField] = useState('');
   const [sortDirection, setSortDirection] = useState('asc');
   
+  // Estado para filtros adicionales
+  const [filters, setFilters] = useState({
+    estado: 'todos',
+    rol: 'todos',
+  });
+  
   // Estado para modales
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [currentItem, setCurrentItem] = useState(null);
+  
+  // Estado para ver filtros
+  const [showFilters, setShowFilters] = useState(false);
   
   // Estado para formularios
   const [usuarioForm, setUsuarioForm] = useState({
@@ -179,19 +199,51 @@ const UsuariosModule = () => {
     });
   };
   
-  // Filtrado y ordenamiento de datos
-  const filteredUsuarios = usuarios
-    .filter(usuario => 
-      usuario.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (usuario.persona && usuario.persona.nombres && usuario.persona.nombres.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (usuario.persona && usuario.persona.apellido_paterno && usuario.persona.apellido_paterno.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (usuario.persona && usuario.persona.ci && usuario.persona.ci.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  
+  // Aplicar filtros
+  const applyFilters = (items) => {
+    return items.filter((item) => {
+      // Filtro de búsqueda por texto
+      const matchesSearch = 
+        item.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.persona && item.persona.nombres && item.persona.nombres.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.persona && item.persona.apellido_paterno && item.persona.apellido_paterno.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.persona && item.persona.ci && item.persona.ci.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      // Filtro por estado
+      const matchesEstado = 
+        filters.estado === 'todos' || 
+        (filters.estado === 'activo' && item.estado) ||
+        (filters.estado === 'inactivo' && !item.estado);
+
+      // Filtro por rol
+      const matchesRol =
+        filters.rol === "todos" ||
+        (item.rol && item.rol.rol_id.toString() === filters.rol);
+
+      return matchesSearch && matchesEstado && matchesRol;
+    });
+  };
+
+  // Filtrado y ordenamiento de usuarios
+  const filteredUsuarios = applyFilters(usuarios);
   const sortedUsuarios = sortItems(filteredUsuarios, sortField, sortDirection);
   const currentUsuarios = sortedUsuarios.slice(indexOfFirstItem, indexOfLastItem);
   
-  const sortedRoles = sortItems(roles, sortField, sortDirection);
+  // Filtrado para roles
+  const filteredRoles = roles.filter(rol => {
+    const matchesSearch = searchTerm === '' || 
+      rol.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (rol.descripcion && rol.descripcion.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesEstado = 
+      filters.estado === 'todos' || 
+      (filters.estado === 'activo' && rol.estado) ||
+      (filters.estado === 'inactivo' && !rol.estado);
+      
+    return matchesSearch && matchesEstado;
+  });
+  
+  const sortedRoles = sortItems(filteredRoles, sortField, sortDirection);
   const currentRoles = sortedRoles.slice(indexOfFirstItem, indexOfLastItem);
   
   // Función para abrir modal
@@ -256,7 +308,7 @@ const UsuariosModule = () => {
   
   // Manejo de cambios en formularios
   const handleUsuarioChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     
     if (name.includes('.')) {
       // Manejar cambios en campos anidados (persona)
@@ -271,16 +323,16 @@ const UsuariosModule = () => {
     } else {
       setUsuarioForm(prev => ({
         ...prev,
-        [name]: name === 'estado' ? e.target.checked : value
+        [name]: type === 'checkbox' ? checked : value
       }));
     }
   };
   
   const handleRolChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setRolForm(prev => ({
       ...prev,
-      [name]: name === 'estado' ? e.target.checked : value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
   
@@ -337,6 +389,12 @@ const UsuariosModule = () => {
       
       await loadUsuarios();
       closeModal();
+      setSuccessMessage(
+        currentItem
+          ? "Usuario actualizado correctamente"
+          : "Usuario creado correctamente"
+      );
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error('Error al guardar usuario:', err);
       setError(err.response?.data?.error || 'Error al guardar usuario');
@@ -369,6 +427,12 @@ const UsuariosModule = () => {
       
       await loadRoles();
       closeModal();
+      setSuccessMessage(
+        currentItem
+          ? "Rol actualizado correctamente"
+          : "Rol creado correctamente"
+      );
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error('Error al guardar rol:', err);
       setError('Error al guardar rol');
@@ -392,6 +456,7 @@ const UsuariosModule = () => {
           }
         );
         await loadUsuarios();
+        setSuccessMessage("Usuario eliminado correctamente");
       } else if (type === 'rol') {
         await axios.delete(
           `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/usuarios/roles/${id}/`,
@@ -400,7 +465,9 @@ const UsuariosModule = () => {
           }
         );
         await loadRoles();
+        setSuccessMessage("Rol eliminado correctamente");
       }
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error(`Error al eliminar ${type}:`, err);
       setError(`Error al eliminar ${type}`);
@@ -485,21 +552,28 @@ const UsuariosModule = () => {
   return (
     <div className="usuarios-module">
       <div className="usuarios-header">
-        <h1>Gestión de Usuarios</h1>
-        <div className="current-date">{getCurrentDate()}</div>
+        <div className="usuarios-header-top">
+          <div className="usuarios-title-section">
+            <h1>Gestión de Usuarios</h1>
+            <div className="usuarios-date">
+              <FaCalendarAlt />
+              <span>{getCurrentDate()}</span>
+            </div>
+          </div>
+        </div>
         
         <div className="usuarios-tabs">
           <button 
             className={activeTab === 'usuarios' ? 'active' : ''} 
             onClick={() => setActiveTab('usuarios')}
           >
-            <i className="fas fa-user"></i> Usuarios
+            <FaUsers /> Usuarios
           </button>
           <button 
             className={activeTab === 'roles' ? 'active' : ''} 
             onClick={() => setActiveTab('roles')}
           >
-            <i className="fas fa-user-tie"></i> Roles
+            <FaUserTie /> Roles
           </button>
         </div>
       </div>
@@ -507,15 +581,72 @@ const UsuariosModule = () => {
       {activeTab === 'usuarios' && (
         <div className="usuarios-content">
           <div className="usuarios-tools">
-            <div className="search-bar">
-              <FaSearch />
-              <input 
-                type="text" 
-                placeholder="Buscar usuarios..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="search-filter-section">
+              <div className="search-bar">
+                <FaSearch />
+                <input 
+                  type="text" 
+                  placeholder="Buscar usuarios..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-dropdown">
+                <button
+                  className="filter-btn"
+                  onClick={() => setShowFilters(!showFilters)}>
+                  <FaFilter /> Filtros <FaChevronDown />
+                </button>
+                {showFilters && (
+                  <div className="filter-menu">
+                    <div className="filter-group">
+                      <label>Estado:</label>
+                      <select
+                        value={filters.estado}
+                        onChange={(e) =>
+                          setFilters({ ...filters, estado: e.target.value })
+                        }>
+                        <option value="todos">Todos</option>
+                        <option value="activo">Activos</option>
+                        <option value="inactivo">Inactivos</option>
+                      </select>
+                    </div>
+                    <div className="filter-group">
+                      <label>Rol:</label>
+                      <select
+                        value={filters.rol}
+                        onChange={(e) =>
+                          setFilters({ ...filters, rol: e.target.value })
+                        }>
+                        <option value="todos">Todos</option>
+                        {roles.map((rol) => (
+                          <option
+                            key={rol.rol_id}
+                            value={rol.rol_id.toString()}>
+                            {rol.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
+            <div className="view-toggle">
+              <button
+                className={viewMode === "grid" ? "active" : ""}
+                onClick={() => setViewMode("grid")}>
+                <FaTh /> Vista de Tarjetas
+              </button>
+              <button
+                className={viewMode === "table" ? "active" : ""}
+                onClick={() => setViewMode("table")}>
+                <FaList /> Vista de Tabla
+              </button>
+            </div>
+            
             <button 
               className="add-btn"
               onClick={() => openModal('nuevo-usuario')}
@@ -524,7 +655,75 @@ const UsuariosModule = () => {
             </button>
           </div>
           
-          <div className="usuarios-table-wrapper">
+          {viewMode === "grid" ? (
+            <div className="usuarios-cards-grid">
+              {currentUsuarios.length > 0 ? (
+                currentUsuarios.map((usuario) => (
+                  <div key={usuario.usuario_id} className="usuario-card">
+                    <div className="usuario-card-header">
+                      <div className="usuario-avatar">
+                        <FaUser />
+                      </div>
+                      <div className={`usuario-estado ${usuario.estado ? "activo" : "inactivo"}`}>
+                        {usuario.estado ? "Activo" : "Inactivo"}
+                      </div>
+                    </div>
+
+                    <div className="usuario-card-content">
+                      <h3 className="usuario-nombre">
+                        {usuario.persona ? `${usuario.persona.nombres} ${usuario.persona.apellido_paterno}` : usuario.username}
+                      </h3>
+                      <div className="usuario-info">
+                        <div className="usuario-info-item">
+                          <span className="info-label">Usuario:</span>
+                          <span className="info-value">{usuario.username}</span>
+                        </div>
+                        <div className="usuario-info-item">
+                          <span className="info-label">CI:</span>
+                          <span className="info-value">{usuario.persona?.ci || 'N/A'}</span>
+                        </div>
+                        <div className="usuario-info-item">
+                          <span className="info-label">Email:</span>
+                          <span className="info-value">{usuario.persona?.email || 'N/A'}</span>
+                        </div>
+                        <div className="usuario-info-item">
+                          <span className="info-label">Teléfono:</span>
+                          <span className="info-value">{usuario.persona?.telefono || 'N/A'}</span>
+                        </div>
+                        <div className="usuario-info-item">
+                          <span className="info-label">Rol:</span>
+                          <span className="info-value">{usuario.rol?.nombre || 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="usuario-card-actions">
+                      <button
+                        className="edit-btn"
+                        onClick={() => openModal("editar-usuario", usuario)}
+                        title="Editar">
+                        <FaEdit /> Editar
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDelete("usuario", usuario.usuario_id)}
+                        title="Eliminar">
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-data-message">
+                  <div className="no-data-icon">
+                    <FaUsers />
+                  </div>
+                  <h3>No hay usuarios disponibles</h3>
+                  <p>Agrega nuevos usuarios haciendo clic en "Nuevo Usuario"</p>
+                </div>
+              )}
+            </div>
+          ) : (
             <div className="usuarios-table-container">
               <table className="usuarios-table">
                 <thead>
@@ -538,26 +737,14 @@ const UsuariosModule = () => {
                     <th onClick={() => handleSort('persona.nombres')}>
                       Nombres {renderSortIcon('persona.nombres')}
                     </th>
-                    <th onClick={() => handleSort('persona.apellido_paterno')}>
-                      Apellido Paterno {renderSortIcon('persona.apellido_paterno')}
-                    </th>
-                    <th onClick={() => handleSort('persona.apellido_materno')}>
-                      Apellido Materno {renderSortIcon('persona.apellido_materno')}
-                    </th>
                     <th onClick={() => handleSort('persona.ci')}>
                       CI {renderSortIcon('persona.ci')}
-                    </th>
-                    <th onClick={() => handleSort('persona.telefono')}>
-                      Teléfono {renderSortIcon('persona.telefono')}
                     </th>
                     <th onClick={() => handleSort('persona.email')}>
                       Email {renderSortIcon('persona.email')}
                     </th>
                     <th onClick={() => handleSort('rol.nombre')}>
                       Rol {renderSortIcon('rol.nombre')}
-                    </th>
-                    <th onClick={() => handleSort('ultimo_login')}>
-                      Último Acceso {renderSortIcon('ultimo_login')}
                     </th>
                     <th onClick={() => handleSort('estado')}>
                       Estado {renderSortIcon('estado')}
@@ -571,14 +758,10 @@ const UsuariosModule = () => {
                       <tr key={usuario.usuario_id}>
                         <td>{usuario.usuario_id}</td>
                         <td>{usuario.username}</td>
-                        <td>{usuario.persona ? usuario.persona.nombres : 'N/A'}</td>
-                        <td>{usuario.persona ? usuario.persona.apellido_paterno : 'N/A'}</td>
-                        <td>{usuario.persona ? usuario.persona.apellido_materno || '-' : 'N/A'}</td>
+                        <td>{usuario.persona ? `${usuario.persona.nombres} ${usuario.persona.apellido_paterno}` : 'N/A'}</td>
                         <td>{usuario.persona ? usuario.persona.ci : 'N/A'}</td>
-                        <td>{usuario.persona ? usuario.persona.telefono : 'N/A'}</td>
                         <td>{usuario.persona ? usuario.persona.email : 'N/A'}</td>
                         <td>{usuario.rol ? usuario.rol.nombre : 'N/A'}</td>
-                        <td>{usuario.ultimo_login ? new Date(usuario.ultimo_login).toLocaleString() : 'Nunca'}</td>
                         <td>
                           <span className={usuario.estado ? 'estado-activo' : 'estado-inactivo'}>
                             {usuario.estado ? 'Activo' : 'Inactivo'}
@@ -604,13 +787,13 @@ const UsuariosModule = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="12" className="no-data">No hay usuarios disponibles</td>
+                      <td colSpan="8" className="no-data">No hay usuarios disponibles</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-          </div>
+          )}
           
           {renderPagination(filteredUsuarios.length)}
         </div>
@@ -619,6 +802,42 @@ const UsuariosModule = () => {
       {activeTab === 'roles' && (
         <div className="usuarios-content">
           <div className="usuarios-tools">
+            <div className="search-filter-section">
+              <div className="search-bar">
+                <FaSearch />
+                <input 
+                  type="text" 
+                  placeholder="Buscar roles..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-dropdown">
+                <button
+                  className="filter-btn"
+                  onClick={() => setShowFilters(!showFilters)}>
+                  <FaFilter /> Filtros <FaChevronDown />
+                </button>
+                {showFilters && (
+                  <div className="filter-menu">
+                    <div className="filter-group">
+                      <label>Estado:</label>
+                      <select
+                        value={filters.estado}
+                        onChange={(e) =>
+                          setFilters({ ...filters, estado: e.target.value })
+                        }>
+                        <option value="todos">Todos</option>
+                        <option value="activo">Activos</option>
+                        <option value="inactivo">Inactivos</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
             <button 
               className="add-btn"
               onClick={() => openModal('nuevo-rol')}
@@ -626,68 +845,53 @@ const UsuariosModule = () => {
               <FaPlus /> Nuevo Rol
             </button>
           </div>
-          
-          <div className="usuarios-table-wrapper">
-            <div className="usuarios-table-container">
-              <table className="usuarios-table">
-                <thead>
-                  <tr>
-                    <th onClick={() => handleSort('rol_id')}>
-                      ID {renderSortIcon('rol_id')}
-                    </th>
-                    <th onClick={() => handleSort('nombre')}>
-                      Nombre {renderSortIcon('nombre')}
-                    </th>
-                    <th onClick={() => handleSort('descripcion')}>
-                      Descripción {renderSortIcon('descripcion')}
-                    </th>
-                    <th onClick={() => handleSort('estado')}>
-                      Estado {renderSortIcon('estado')}
-                    </th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentRoles.length > 0 ? (
-                    currentRoles.map(rol => (
-                      <tr key={rol.rol_id}>
-                        <td>{rol.rol_id}</td>
-                        <td>{rol.nombre}</td>
-                        <td>{rol.descripcion}</td>
-                        <td>
-                          <span className={rol.estado ? 'estado-activo' : 'estado-inactivo'}>
-                            {rol.estado ? 'Activo' : 'Inactivo'}
-                          </span>
-                        </td>
-                        <td className="acciones">
-                          <button 
-                            className="edit-btn"
-                            onClick={() => openModal('editar-rol', rol)}
-                            title="Editar"
-                          >
-                            <FaEdit />
-                          </button>
-                          <button 
-                            className="delete-btn"
-                            onClick={() => handleDelete('rol', rol.rol_id)}
-                            title="Eliminar"
-                          >
-                            <FaTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="no-data">No hay roles disponibles</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+
+          <div className="roles-cards-grid">
+            {currentRoles.length > 0 ? (
+              currentRoles.map((rol) => (
+                <div key={rol.rol_id} className="rol-card">
+                  <div className="rol-card-header">
+                    <div className="rol-icon">
+                      <FaUserTie />
+                    </div>
+                    <div className={`rol-estado ${rol.estado ? "activo" : "inactivo"}`}>
+                      {rol.estado ? "Activo" : "Inactivo"}
+                    </div>
+                  </div>
+
+                  <div className="rol-card-content">
+                    <h3 className="rol-nombre">{rol.nombre}</h3>
+                    <p className="rol-descripcion">{rol.descripcion}</p>
+                  </div>
+
+                  <div className="rol-card-actions">
+                    <button
+                      className="edit-btn"
+                      onClick={() => openModal("editar-rol", rol)}
+                      title="Editar">
+                      <FaEdit /> Editar
+                    </button>
+                    <button
+                      className="delete-btn"
+                      onClick={() => handleDelete("rol", rol.rol_id)}
+                      title="Eliminar">
+                      <FaTrash />
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="no-data-message">
+                <div className="no-data-icon">
+                  <FaUserTie />
+                </div>
+                <h3>No hay roles disponibles</h3>
+                <p>Agrega nuevos roles haciendo clic en "Nuevo Rol"</p>
+              </div>
+            )}
           </div>
           
-          {renderPagination(roles.length)}
+          {renderPagination(filteredRoles.length)}
         </div>
       )}
       
@@ -979,6 +1183,28 @@ const UsuariosModule = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Mensajes de error */}
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+          <button onClick={() => setError("")} className="close-error-btn">
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Mensajes de éxito */}
+      {successMessage && (
+        <div className="success-message">
+          <p>{successMessage}</p>
+          <button
+            onClick={() => setSuccessMessage("")}
+            className="close-success-btn">
+            ×
+          </button>
         </div>
       )}
     </div>

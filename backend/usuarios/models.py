@@ -107,6 +107,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     
     def get_short_name(self):
         return self.username
+    @property
+    def is_active(self):
+        return self.estado
 
 class SistemaLog(models.Model):
     log_id = models.AutoField(primary_key=True, db_column='log_id', verbose_name='ID de Log')

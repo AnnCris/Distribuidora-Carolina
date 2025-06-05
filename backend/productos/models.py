@@ -1,4 +1,17 @@
 from django.db import models
+import os
+
+def marca_logo_path(instance, filename):
+    """Función para definir la ruta de subida de logos de marcas"""
+    ext = filename.split('.')[-1]
+    filename = f"marca_{instance.marca_id or 'new'}_{filename}"
+    return os.path.join('marcas/logos/', filename)
+
+def producto_imagen_path(instance, filename):
+    """Función para definir la ruta de subida de imágenes de productos"""
+    ext = filename.split('.')[-1]
+    filename = f"producto_{instance.producto_id or 'new'}_{filename}"
+    return os.path.join('productos/imagenes/', filename)
 
 class DistribuidoraManager(models.Manager):
     def get_queryset(self):
@@ -52,7 +65,13 @@ class Marca(models.Model):
     marca_id = models.AutoField(primary_key=True, db_column='marca_id', verbose_name='ID de Marca')
     nombre = models.CharField(max_length=50, verbose_name='Nombre de la Marca')
     descripcion = models.CharField(max_length=255, verbose_name='Descripción')
-    logo_url = models.CharField(max_length=255, verbose_name='URL del Logo', null=True, blank=True)
+    logo = models.ImageField(
+        upload_to=marca_logo_path, 
+        verbose_name='Logo de la Marca', 
+        null=True, 
+        blank=True,
+        help_text='Sube una imagen para el logo de la marca (JPG, PNG, etc.)'
+    )
     estado = models.BooleanField(default=True, verbose_name='Estado Activo')
     
     objects = MarcaManager()
@@ -64,6 +83,12 @@ class Marca(models.Model):
     
     def __str__(self):
         return self.nombre
+    
+    def get_logo_url(self):
+        """Retorna la URL del logo si existe"""
+        if self.logo and hasattr(self.logo, 'url'):
+            return self.logo.url
+        return None
 
 class ProductoManager(models.Manager):
     def get_queryset(self):
@@ -78,7 +103,13 @@ class Producto(models.Model):
     descripcion = models.CharField(max_length=255, verbose_name='Descripción')
     fecha_vencimiento = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de Vencimiento')
     peso = models.CharField(max_length=50, verbose_name='Peso/Volumen')
-    imagen_url = models.CharField(max_length=255, verbose_name='URL de la Imagen', null=True, blank=True)
+    imagen = models.ImageField(
+        upload_to=producto_imagen_path, 
+        verbose_name='Imagen del Producto', 
+        null=True, 
+        blank=True,
+        help_text='Sube una imagen del producto (JPG, PNG, etc.)'
+    )
     estado = models.BooleanField(default=True, verbose_name='Estado Activo')
     
     objects = ProductoManager()
@@ -90,6 +121,12 @@ class Producto(models.Model):
     
     def __str__(self):
         return self.nombre
+    
+    def get_imagen_url(self):
+        """Retorna la URL de la imagen si existe"""
+        if self.imagen and hasattr(self.imagen, 'url'):
+            return self.imagen.url
+        return None
 
 class InventarioManager(models.Manager):
     def get_queryset(self):

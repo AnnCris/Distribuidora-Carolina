@@ -1198,3 +1198,264 @@
 .tooltip-icon-down {
   color: #e53e3e;
 }
+
+/* Estilos para manejo de archivos e imágenes */
+.file-input-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.file-input {
+  padding: 10px 12px;
+  border: 2px dashed #e5e7eb;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.file-input:hover {
+  border-color: #e53e3e;
+  background-color: #fef2f2;
+}
+
+.file-input:focus {
+  outline: none;
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
+
+/* Vista previa de imágenes */
+.image-preview {
+  position: relative;
+  display: inline-block;
+  max-width: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e5e7eb;
+}
+
+.image-preview img {
+  width: 100%;
+  height: auto;
+  max-height: 150px;
+  object-fit: cover;
+  display: block;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  background-color: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.remove-image-btn:hover {
+  background-color: rgba(239, 68, 68, 1);
+  transform: scale(1.1);
+}
+
+/* Texto de ayuda */
+.help-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 5px;
+  font-style: italic;
+}
+
+/* Imagen de producto en tarjetas */
+.producto-image {
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.producto-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.producto-card:hover .producto-image img {
+  transform: scale(1.05);
+}
+
+/* Logo de marca en tabla */
+.marca-logo {
+  height: 40px;
+  max-width: 80px;
+  object-fit: contain;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 4px;
+  background-color: white;
+}
+
+/* Placeholder cuando no hay imagen */
+.no-image-placeholder {
+  width: 100%;
+  height: 120px;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 2rem;
+}
+
+/* Estilos para el input de archivo estilizado */
+.custom-file-input {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  cursor: pointer;
+  border: 2px dashed #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  background-color: #f9fafb;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.custom-file-input:hover {
+  border-color: #e53e3e;
+  background-color: #fef2f2;
+}
+
+.custom-file-input input[type="file"] {
+  position: absolute;
+  left: -9999px;
+}
+
+.file-input-icon {
+  font-size: 2rem;
+  color: #9ca3af;
+  margin-bottom: 10px;
+}
+
+.file-input-text {
+  color: #4b5563;
+  font-weight: 500;
+}
+
+/* Galería de imágenes para vista de productos */
+.product-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.gallery-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.gallery-item:hover {
+  transform: scale(1.02);
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+}
+
+/* Loading spinner para subida de archivos */
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: #e0f2fe;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.upload-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #0891b2;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.upload-text {
+  color: #0e7490;
+  font-size: 0.9rem;
+}
+
+/* Error de subida */
+.upload-error {
+  padding: 10px;
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-radius: 6px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
+/* Responsive para imágenes */
+@media (max-width: 768px) {
+  .image-preview {
+    max-width: 150px;
+  }
+  
+  .image-preview img {
+    max-height: 100px;
+  }
+  
+  .producto-image {
+    height: 100px;
+  }
+  
+  .custom-file-input {
+    padding: 15px;
+  }
+  
+  .file-input-icon {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .image-preview {
+    max-width: 120px;
+  }
+  
+  .product-gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .gallery-item img {
+    height: 80px;
+  }
+}
