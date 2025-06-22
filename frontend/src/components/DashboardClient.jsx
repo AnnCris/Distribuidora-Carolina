@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../utils/axiosConfig"; // Usar nuestro cliente configurado
 import {
   FaHome,
   FaShoppingCart,
@@ -12,11 +12,9 @@ import {
   FaHistory,
   FaHeart,
   FaTag,
-  FaBars,
 } from "react-icons/fa";
 import "./DashboardClient.css";
 import logoCircular from "../assets/distribuidora.png";
-import ProductosModule from "./ProductosModule";
 import ProductosCliente from "./ProductosCliente";
 
 const DashboardClient = () => {
@@ -27,7 +25,7 @@ const DashboardClient = () => {
   const [activeModule, setActiveModule] = useState("inicio");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Datos de ejemplo (en el futuro se obtendrán del backend)
+  // Datos de ejemplo
   const clientData = {
     pedidosRecientes: [
       { id: 1, fecha: "15/04/2025", estado: "Entregado", total: "Bs. 320.00" },
@@ -35,69 +33,54 @@ const DashboardClient = () => {
     ],
     productosDestacados: [
       { id: 1, nombre: "Queso Fresco", precio: "Bs. 25.00/kg", imagen: null },
-      {
-        id: 2,
-        nombre: "Queso Mozzarella",
-        precio: "Bs. 30.00/kg",
-        imagen: null,
-      },
+      { id: 2, nombre: "Queso Mozzarella", precio: "Bs. 30.00/kg", imagen: null },
       { id: 3, nombre: "Queso Cheddar", precio: "Bs. 35.00/kg", imagen: null },
       { id: 4, nombre: "Queso Gouda", precio: "Bs. 32.00/kg", imagen: null },
     ],
     ofertas: [
-      {
-        id: 1,
-        titulo: "10% de descuento",
-        descripcion: "En compras mayores a Bs. 200.00",
-      },
-      {
-        id: 2,
-        titulo: "2x1 en queso fresco",
-        descripcion: "Válido hasta el 15 de mayo",
-      },
+      { id: 1, titulo: "10% de descuento", descripcion: "En compras mayores a Bs. 200.00" },
+      { id: 2, titulo: "2x1 en queso fresco", descripcion: "Válido hasta el 15 de mayo" },
     ],
   };
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Verificar si hay un token
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
+        setLoading(true);
+        setError("");
+
+        // Verificar si hay tokens
+        const accessToken = localStorage.getItem("accessToken");
+        const refreshToken = localStorage.getItem("refreshToken");
+
+        if (!accessToken && !refreshToken) {
           navigate("/login");
           return;
         }
 
-        // Configurar el encabezado de autorización
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-        // Obtener datos del usuario
-        const response = await axios.get(
-          `${
-            process.env.REACT_APP_API_URL || "http://localhost:8000"
-          }/api/usuarios/usuarios/perfil/`
-        );
-
+        // Obtener datos del usuario usando nuestro cliente configurado
+        const response = await apiClient.get("/api/usuarios/usuarios/perfil/");
         setUser(response.data);
 
-        // Verificar que el usuario sea cliente
+        // Verificar rol de cliente
         if (response.data.rol.rol_id !== 2) {
-          // Redirigir a usuarios no clientes
           if (response.data.rol.rol_id === 1) {
             navigate("/admin-dashboard");
           } else {
             navigate("/");
           }
+          return;
         }
+
       } catch (err) {
         console.error("Error al obtener datos del usuario:", err);
+        
+        // Si el interceptor no manejó el error, significa que no hay solución
         if (err.response?.status === 401) {
-          // Token expirado o inválido
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
-          navigate("/login");
+          setError("Sesión expirada. Por favor, inicia sesión nuevamente.");
+          setTimeout(() => navigate("/login"), 2000);
         } else {
-          setError("Error al cargar datos del usuario");
+          setError("Error al cargar datos del usuario. Intenta recargar la página.");
         }
       } finally {
         setLoading(false);
@@ -107,25 +90,19 @@ const DashboardClient = () => {
     fetchUserData();
   }, [navigate]);
 
-  const handleLogout = () => {
-    // Llamar a la API de cierre de sesión
-    axios
-      .post(
-        `${
-          process.env.REACT_APP_API_URL || "http://localhost:8000"
-        }/api/usuarios/auth/logout/`
-      )
-      .catch((err) => {
-        console.error("Error durante el cierre de sesión:", err);
-      })
-      .finally(() => {
-        // Eliminar tokens independientemente de la respuesta de la API
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        delete axios.defaults.headers.common["Authorization"];
-        navigate("/login");
-      });
+  const handleLogout = async () => {
+    try {
+      // Intentar llamar a la API de logout
+      await apiClient.post("/api/usuarios/auth/logout/");
+    } catch (err) {
+      console.error("Error durante el cierre de sesión:", err);
+    } finally {
+      // Limpiar tokens y redirigir
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      navigate("/login");
+    }
   };
 
   const toggleSidebar = () => {

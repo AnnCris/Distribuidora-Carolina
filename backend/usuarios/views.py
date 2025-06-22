@@ -1,3 +1,5 @@
+# usuarios/views.py - Actualizar con debug
+
 from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -11,6 +13,10 @@ from .serializers import (
     RegistroUsuarioSerializer, UsuarioDetalleSerializer, UsuarioActualizarSerializer,
     CambioContraseñaSerializer, LoginSerializer, RolSerializer
 )
+import logging
+
+# Configurar logging
+logger = logging.getLogger(__name__)
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -86,10 +92,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             response_serializer = UsuarioDetalleSerializer(instance)
             return Response(response_serializer.data)
             
-        except serializers.ValidationError as e:
-            print(f"Error de validación: {e.detail}")
-            print(f"Datos recibidos: {request.data}")
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print(f"Error inesperado en actualización de usuario: {str(e)}")
             print(f"Datos recibidos: {request.data}")
@@ -126,8 +128,26 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def perfil(self, request):
-        serializer = UsuarioDetalleSerializer(request.user)
-        return Response(serializer.data)
+        # DEBUG: Imprimir información de autenticación
+        print(f"=== DEBUG PERFIL ===")
+        print(f"User: {request.user}")
+        print(f"User authenticated: {request.user.is_authenticated}")
+        print(f"User ID: {getattr(request.user, 'usuario_id', 'NO ID')}")
+        print(f"Username: {getattr(request.user, 'username', 'NO USERNAME')}")
+        print(f"Headers: {dict(request.headers)}")
+        print(f"Auth header: {request.META.get('HTTP_AUTHORIZATION', 'NO AUTH HEADER')}")
+        print(f"==================")
+        
+        if not request.user.is_authenticated:
+            return Response({'error': 'Usuario no autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            serializer = UsuarioDetalleSerializer(request.user)
+            return Response(serializer.data)
+        except Exception as e:
+            print(f"Error en perfil: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class RegistroUsuarioView(generics.CreateAPIView):
     queryset = Usuario.objects.all()
     serializer_class = RegistroUsuarioSerializer
@@ -186,6 +206,14 @@ class LoginView(generics.GenericAPIView):
         
         # Generar tokens JWT
         refresh = RefreshToken.for_user(user)
+        
+        # DEBUG: Imprimir información del token
+        print(f"=== DEBUG LOGIN ===")
+        print(f"User ID: {user.usuario_id}")
+        print(f"Username: {user.username}")
+        print(f"Access token: {str(refresh.access_token)[:50]}...")
+        print(f"Refresh token: {str(refresh)[:50]}...")
+        print(f"==================")
         
         # Registro en los logs del sistema
         SistemaLog.objects.create(
